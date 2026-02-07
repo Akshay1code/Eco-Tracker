@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import LoginPage from './components/LoginPage.jsx';
 import SignupPage from './components/SignupPage.jsx';
 import Dashboard from './components/Dashboard.jsx'; 
+import GameIntro from './components/GameIntro.jsx';
 
 
 function App() {
@@ -10,11 +11,11 @@ function App() {
     <Router>
       <Routes>
         {/* Set Login as the default landing page */}
-        <Route path="/" element={<Navigate to="/login" />} />
-        
+        <Route path="/" element={<Navigate to="/game"/>} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/game" element={<GameIntro/>}/>
       </Routes>
     </Router>
   );
