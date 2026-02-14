@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from "react-router-dom";
 import * as THREE from 'three';
 
-export default function GameIntro() {
+export default function GameIntro({ onComplete }) {
+  const navigate = useNavigate();
   const containerRef = useRef(null);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [currentScene, setCurrentScene] = useState('loading');
@@ -921,7 +923,11 @@ export default function GameIntro() {
 
         if (phaseTime >= 4) {
           phase = 'complete';
-          setCurrentScene('gameplay');
+          if (onComplete) {
+            onComplete();
+          } else {
+            setCurrentScene('gameplay');
+          }
         }
       }
 
@@ -950,7 +956,10 @@ export default function GameIntro() {
   }, []);
 
   const handleSkip = () => {
-    setCurrentScene('gameplay');
+    if (onComplete) {
+      onComplete();
+    } 
+    navigate("/login");
   };
 
   return (
@@ -989,7 +998,7 @@ export default function GameIntro() {
           <div className="gameplay-content">
             <h2 className="gameplay-title">Welcome to the City</h2>
             <p className="gameplay-subtitle">Your mission to save Earth begins here...</p>
-            <button className="start-button">Start Game</button>
+            <button className="start-button" onClick={handleSkip}>Start Game</button>
           </div>
         </div>
       )}
