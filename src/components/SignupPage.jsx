@@ -510,7 +510,7 @@ export default function GamifiedSignup() {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
 
         * {

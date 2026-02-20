@@ -262,6 +262,7 @@ export default function EnhancedLoginWithStory() {
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   placeholder="you@example.com"
+                  autoComplete="email"
                   required
                   className="auth-input"
                   autoFocus
@@ -280,6 +281,7 @@ export default function EnhancedLoginWithStory() {
                   type="password"
                   value={formData.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
+                  autoComplete="current-password"
                   placeholder="••••••••"
                   required
                   className="auth-input"
@@ -315,7 +317,7 @@ export default function EnhancedLoginWithStory() {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         .enhanced-login-container {
