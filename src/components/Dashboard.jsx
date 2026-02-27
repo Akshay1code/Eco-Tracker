@@ -1432,7 +1432,7 @@ function CommunityTab() {
       </div>
 
       {/* Results info */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div className="dashboard-results-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ color: "rgba(255,255,255,0.28)", fontSize: 10, fontFamily: "'Space Mono',monospace" }}>
           {filtered.length} video{filtered.length !== 1 ? "s" : ""} found
         </div>
@@ -1444,7 +1444,7 @@ function CommunityTab() {
 
       {/* Video grid */}
       {filtered.length > 0 ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
+        <div className="dashboard-video-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 16 }}>
           {filtered.map((v, i) => (
             <VideoCard key={v.id} video={v} index={i} onPlay={setActiveVideo} />
           ))}
@@ -1574,6 +1574,24 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
         .logout-btn:hover{background:rgba(239,68,68,0.12)!important;border-color:rgba(239,68,68,0.4)!important;color:#f87171!important;}
         input::placeholder{color:rgba(255,255,255,0.2);}
         select option{background:#0a1a0e;color:#fff;}
+        @media (max-width:1024px){
+          .dashboard-main{padding:0 16px 48px!important;}
+          .dashboard-greeting-grid{grid-template-columns:1fr!important;}
+          .dashboard-hero-grid{grid-template-columns:1fr!important;}
+          .dashboard-stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+          .dashboard-mission-grid,.dashboard-impact-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+        }
+        @media (max-width:768px){
+          .dashboard-main{padding:0 12px 36px!important;}
+          .dashboard-header{flex-direction:column;align-items:flex-start!important;gap:12px;}
+          .dashboard-header-right{width:100%;display:flex;flex-wrap:wrap;justify-content:flex-start!important;gap:8px!important;}
+          .dashboard-divider{display:none!important;}
+          .dashboard-tabs{width:100%!important;overflow-x:auto;overflow-y:hidden;padding-bottom:2px;}
+          .dashboard-tab-btn{white-space:nowrap;}
+          .dashboard-stats-grid,.dashboard-mission-grid,.dashboard-impact-grid,.dashboard-video-grid{grid-template-columns:1fr!important;}
+          .dashboard-results-row{flex-direction:column;align-items:flex-start!important;gap:6px;}
+          .dashboard-mobile-wrap{flex-wrap:wrap!important;align-items:flex-start!important;gap:10px!important;}
+        }
       `}</style>
 
       <Particles trigger={lvlTrigger} />
@@ -1598,11 +1616,11 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
         {Array.from({ length: 10 }, (_, i) => <line key={`h${i}`} x1="0" y1={`${(i + 1) * 9.09}%`} x2="100%" y2={`${(i + 1) * 9.09}%`} stroke="#22c55e" strokeWidth="0.5" />)}
       </svg>
 
-      <div style={{ minHeight: "100vh", color: "#fff", fontFamily: "'Space Grotesk',sans-serif", position: "relative", zIndex: 2 }}>
-        <div style={{ maxWidth: 1140, margin: "0 auto", padding: "0 24px 64px" }}>
+      <div className="dashboard-shell" style={{ minHeight: "100vh", color: "#fff", fontFamily: "'Space Grotesk',sans-serif", position: "relative", zIndex: 2 }}>
+        <div className="dashboard-main" style={{ maxWidth: 1140, margin: "0 auto", padding: "0 24px 64px" }}>
 
           {/* ══ HEADER ══ */}
-          <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 0 22px", borderBottom: "1px solid rgba(255,255,255,0.05)", marginBottom: 26 }}>
+          <header className="dashboard-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 0 22px", borderBottom: "1px solid rgba(255,255,255,0.05)", marginBottom: 26 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <div style={{ width: 44, height: 44, borderRadius: 12, background: "linear-gradient(135deg,#052e16,#14532d)", border: "1px solid rgba(34,197,94,0.35)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, animation: "glowPulse 3s infinite" }}>🌿</div>
               <div>
@@ -1610,7 +1628,7 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
                 <div style={{ color: "rgba(34,197,94,0.45)", fontSize: 8, letterSpacing: 3.5, fontFamily: "'Space Mono',monospace" }}>CARBON TRACKER RPG</div>
               </div>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div className="dashboard-header-right" style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.22)", borderRadius: 12, padding: "7px 14px", animation: "streakBob 3s ease infinite" }}>
                 <span style={{ fontSize: 18 }}>🔥</span>
                 <div>
@@ -1619,7 +1637,7 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
                 </div>
               </div>
               <TrackingBadge isTracking={isTracking} />
-              <div style={{ width: 1, height: 30, background: "rgba(255,255,255,0.07)" }} />
+              <div className="dashboard-divider" style={{ width: 1, height: 30, background: "rgba(255,255,255,0.07)" }} />
               <div style={{ textAlign: "right" }}>
                 <div style={{ color: "#86efac", fontWeight: 700, fontSize: 13 }}>{userName}</div>
                 <div style={{ color: rank.color, fontSize: 9, letterSpacing: 1.5, fontFamily: "'Space Mono',monospace" }}>{rank.icon} {rank.title.toUpperCase()}</div>
@@ -1629,7 +1647,7 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
           </header>
 
           {/* ══ GREETING + QUOTE ══ */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr", gap: 16, marginBottom: 22, animation: "fadeUp 0.5s ease" }}>
+          <div className="dashboard-greeting-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr", gap: 16, marginBottom: 22, animation: "fadeUp 0.5s ease" }}>
             <div style={{ background: "linear-gradient(135deg,rgba(34,197,94,0.08),rgba(16,185,129,0.04))", border: "1px solid rgba(34,197,94,0.14)", borderRadius: 18, padding: "22px 24px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
               <div>
                 <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, fontFamily: "'Space Mono',monospace", letterSpacing: 2, marginBottom: 4 }}>{getGreeting().toUpperCase()}</div>
@@ -1668,7 +1686,7 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
           )}
 
           {motionPermission !== "granted" && isTracking && (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(59,130,246,0.07)", border: "1px solid rgba(59,130,246,0.2)", borderRadius: 14, padding: "14px 18px", marginBottom: 20, color: "#60a5fa", fontSize: 12, fontFamily: "'Space Mono',monospace" }}>
+            <div className="dashboard-mobile-wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(59,130,246,0.07)", border: "1px solid rgba(59,130,246,0.2)", borderRadius: 14, padding: "14px 18px", marginBottom: 20, color: "#60a5fa", fontSize: 12, fontFamily: "'Space Mono',monospace" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <span>🦶</span>
                 <span>Motion sensors are paused by the browser. Tap "Activate" to start step counting.</span>
@@ -1683,7 +1701,7 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
           )}
 
           {/* ══ HERO ROW ══ */}
-          <div style={{ display: "grid", gridTemplateColumns: "196px 1fr", gap: 20, marginBottom: 20 }}>
+          <div className="dashboard-hero-grid" style={{ display: "grid", gridTemplateColumns: "196px 1fr", gap: 20, marginBottom: 20 }}>
             <div style={{ background: "linear-gradient(160deg,rgba(34,197,94,0.07),rgba(255,255,255,0.025))", border: `1px solid ${rank.color}20`, borderRadius: 22, padding: "28px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 20, boxShadow: `0 0 40px ${rank.color}06` }}>
               <XPRing xp={xp} rank={rank} />
               {(() => {
@@ -1718,7 +1736,7 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
+            <div className="dashboard-stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
               <StatCard delay={50} icon="🌱" label="Carbon" value={carbon.toFixed(5)} unit="kg CO₂" glow="#22c55e" pulse />
               <StatCard delay={100} icon="⏱" label="Active" value={formatTime(screenTime)} unit="hh:mm:ss" glow="#3b82f6" />
               <StatCard delay={150} icon="🔋" label="Battery" value={batteryUsed.toFixed(2)} unit="% used" glow="#f59e0b" />
@@ -1730,9 +1748,9 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
           </div>
 
           {/* ══ TABS ══ */}
-          <div style={{ display: "flex", gap: 4, marginBottom: 16, background: "rgba(255,255,255,0.03)", borderRadius: 12, padding: 4, width: "fit-content" }}>
+          <div className="dashboard-tabs" style={{ display: "flex", gap: 4, marginBottom: 16, background: "rgba(255,255,255,0.03)", borderRadius: 12, padding: 4, width: "fit-content" }}>
             {TABS.map(t => (
-              <button key={t.id} className="tab-btn" onClick={() => setActiveTab(t.id)} style={{
+              <button key={t.id} className="tab-btn dashboard-tab-btn" onClick={() => setActiveTab(t.id)} style={{
                 background: activeTab === t.id ? "rgba(34,197,94,0.15)" : "transparent",
                 border: `1px solid ${activeTab === t.id ? "rgba(34,197,94,0.35)" : "transparent"}`,
                 color: activeTab === t.id ? "#4ade80" : "rgba(255,255,255,0.35)",
@@ -1783,7 +1801,7 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
                     <span style={{ color: "#4ade80", fontSize: 10, fontFamily: "'Space Mono',monospace" }}>{doneMissions}/{DAILY_GOALS.length} DONE</span>
                   </div>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
+                <div className="dashboard-mission-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
                   {DAILY_GOALS.map((m, i) => <MissionCard key={m.id} mission={m} data={liveData} index={i} />)}
                 </div>
               </div>
@@ -1799,7 +1817,7 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
                   <span style={{ fontSize: 15 }}>🌍</span>
                   <span style={{ fontWeight: 700, fontSize: 13 }}>Real-World Eco Impact</span>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
+                <div className="dashboard-impact-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
                   {[
                     { icon: "🌳", title: "Tree equivalent", value: `${(carbon * 40).toFixed(3)}`, unit: "trees/day", desc: "Trees absorbing equivalent CO₂", color: "#22c55e" },
                     { icon: "🚗", title: "Car equivalent", value: `${(carbon / 0.21 * 1000).toFixed(0)}`, unit: "meters", desc: "Same emissions as driving this far", color: "#f59e0b" },
@@ -1819,7 +1837,7 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
                   <span style={{ fontSize: 15 }}>🎯</span>
                   <span style={{ fontWeight: 700, fontSize: 13 }}>Mission Progress</span>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
+                <div className="dashboard-mission-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
                   {DAILY_GOALS.map((m, i) => <MissionCard key={m.id} mission={m} data={liveData} index={i} />)}
                 </div>
               </div>
