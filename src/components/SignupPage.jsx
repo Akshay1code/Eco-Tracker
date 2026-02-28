@@ -521,6 +521,7 @@ export default function GamifiedSignup() {
 
         .signup-container {
           min-height: 100vh;
+          min-height: 100dvh;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -1348,8 +1349,12 @@ export default function GamifiedSignup() {
         /* ===== RESPONSIVE ===== */
         @media (max-width: 768px) {
           .signup-container {
+            min-height: 100svh;
             padding: 16px;
           }
+
+          .floating-shapes { opacity: 0.45; }
+          .shape-5, .shape-6, .shape-7, .shape-8 { display: none; }
 
           .score-badge,
           .achievement-notification {
@@ -1403,6 +1408,15 @@ export default function GamifiedSignup() {
         }
 
         @media (max-width: 480px) {
+          .floating-shapes { opacity: 0.3; }
+          .shape-3, .shape-4 { display: none; }
+          .score-badge { padding: 8px 12px; gap: 8px; }
+          .score-icon { font-size: 18px; }
+          .score-text { font-size: 14px; }
+          .achievement-notification { padding: 10px 12px; gap: 10px; border-radius: 12px; }
+          .achievement-icon-large { font-size: 28px; }
+          .achievement-name { font-size: 14px; }
+          .achievement-xp { font-size: 12px; }
           .intro-icon {
             font-size: 64px;
           }
@@ -1430,6 +1444,18 @@ export default function GamifiedSignup() {
           .interest-btn {
             font-size: 14px;
             padding: 10px 14px;
+          }
+
+          .intro-card,
+          .story-card,
+          .question-card {
+            padding: 24px 16px;
+            border-radius: 18px;
+            width: min(96vw, 620px);
+          }
+
+          .question-content {
+            min-height: 330px;
           }
         }
       `}</style>

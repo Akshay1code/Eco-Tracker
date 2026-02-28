@@ -293,7 +293,7 @@ function useDeviceCarbonTracker(userEmail) {
       setLocation(locationRef.current);
       setAddress(addressRef.current);
       setScreenTime(screenTimeRef.current);
-    }, 4000);
+    }, 1000);
     return () => clearInterval(uiInterval);
   }, []);
 
@@ -441,6 +441,7 @@ function useDeviceCarbonTracker(userEmail) {
       watchIdRef.current = navigator.geolocation.watchPosition(
         (pos) => {
           const { latitude, longitude, speed: spd, accuracy } = pos.coords;
+          const sensorSpeedKmh = Number.isFinite(spd) && spd > 0 ? spd * 3.6 : 0;
           const current = {
             latitude, longitude,
             timestamp: pos.timestamp || Date.now(),
@@ -450,7 +451,7 @@ function useDeviceCarbonTracker(userEmail) {
           if (!prev) {
             prevAcceptedPosRef.current = current;
             locationRef.current = { latitude, longitude };
-            speedRef.current = Number.isFinite(spd) && spd > 0 ? spd * 3.6 : 0;
+            speedRef.current = sensorSpeedKmh;
             addressRef.current = "Resolving address...";
             maybeReverseGeocode(latitude, longitude);
             setPermissionDenied(false);
@@ -467,11 +468,15 @@ function useDeviceCarbonTracker(userEmail) {
           const hasGoodAccuracy = current.accuracy == null || current.accuracy <= MAX_ACCEPTED_GPS_ACCURACY_M;
           const isJitter = stepKm < minStepKm;
           const isOutlierJump = computedSpeedKmh > MAX_ACCEPTED_SPEED_KMH;
+          if (hasGoodAccuracy && !isOutlierJump) {
+            // Keep speed live even when movement is too small to count as distance progress.
+            speedRef.current = sensorSpeedKmh > 0 ? sensorSpeedKmh : 0;
+          }
           if (hasGoodAccuracy && !isJitter && !isOutlierJump) {
             prevAcceptedPosRef.current = current;
             locationRef.current = { latitude, longitude };
             distanceRef.current += stepKm;
-            const currentSpeedKmh = Number.isFinite(spd) && spd > 0 ? spd * 3.6 : computedSpeedKmh;
+            const currentSpeedKmh = sensorSpeedKmh > 0 ? sensorSpeedKmh : computedSpeedKmh;
             const speedFactor = getTransportFactor(currentSpeedKmh);
             carbonRef.current += stepKm * speedFactor;
             // GPS fallback for steps when motion sensors are unavailable/noisy.
@@ -492,6 +497,7 @@ function useDeviceCarbonTracker(userEmail) {
         () => {
           setPermissionDenied(true);
           setPermissionState("denied");
+          speedRef.current = 0;
           setIsTracking(false);
           if (motionHandlerRef.current) {
             window.removeEventListener("devicemotion", motionHandlerRef.current);
@@ -499,7 +505,7 @@ function useDeviceCarbonTracker(userEmail) {
           }
           watchIdRef.current = null;
         },
-        { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+        { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
       );
     }
 
@@ -1560,6 +1566,9 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
         html{scroll-behavior:smooth;}
         body{background:#050b07;overflow-x:hidden;}
+        #root{width:100%;max-width:none;margin:0;padding:0;}
+        .dashboard-shell{width:100%;overflow-x:hidden;}
+        .dashboard-main{width:min(100%,1140px);}
         ::-webkit-scrollbar{width:3px;}
         ::-webkit-scrollbar-track{background:transparent;}
         ::-webkit-scrollbar-thumb{background:rgba(34,197,94,0.2);border-radius:99px;}
@@ -1585,33 +1594,46 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
           .dashboard-main{padding:0 12px 36px!important;}
           .dashboard-header{flex-direction:column;align-items:flex-start!important;gap:12px;}
           .dashboard-header-right{width:100%;display:flex;flex-wrap:wrap;justify-content:flex-start!important;gap:8px!important;}
+          .dashboard-rank-banner{
+            top:12px!important; left:12px!important; right:12px!important;
+            transform:none!important; width:auto!important; padding:10px 12px!important;
+          }
+          .dashboard-rank-banner > div:first-child{font-size:13px!important;line-height:1.35!important;}
+          .dashboard-rank-banner > div:last-child{font-size:9px!important;}
           .dashboard-divider{display:none!important;}
+          .dashboard-scanline,.dashboard-bg-glow,.dashboard-bg-grid{display:none!important;}
           .dashboard-tabs{width:100%!important;overflow-x:auto;overflow-y:hidden;padding-bottom:2px;}
           .dashboard-tab-btn{white-space:nowrap;}
           .dashboard-stats-grid,.dashboard-mission-grid,.dashboard-impact-grid,.dashboard-video-grid{grid-template-columns:1fr!important;}
           .dashboard-results-row{flex-direction:column;align-items:flex-start!important;gap:6px;}
           .dashboard-mobile-wrap{flex-wrap:wrap!important;align-items:flex-start!important;gap:10px!important;}
         }
+        @media (max-width:520px){
+          .dashboard-main{padding:0 10px 28px!important;}
+          .dashboard-header{padding:14px 0 16px!important;margin-bottom:16px!important;}
+          .dashboard-tabs{margin-bottom:12px!important;}
+          .dashboard-tab-btn{padding:8px 10px!important;font-size:10px!important;}
+        }
       `}</style>
 
       <Particles trigger={lvlTrigger} />
 
       {lvlBanner && (
-        <div style={{ position: "fixed", top: 76, left: "50%", zIndex: 9998, background: "linear-gradient(135deg,#052e16,#14532d)", border: "1px solid rgba(34,197,94,0.7)", borderRadius: 16, padding: "14px 36px", textAlign: "center", boxShadow: "0 0 48px rgba(34,197,94,0.35),0 8px 32px rgba(0,0,0,0.6)", animation: "fadeSlideDown 0.4s ease" }}>
+        <div className="dashboard-rank-banner" style={{ position: "fixed", top: 76, left: "50%", zIndex: 9998, background: "linear-gradient(135deg,#052e16,#14532d)", border: "1px solid rgba(34,197,94,0.7)", borderRadius: 16, padding: "14px 36px", textAlign: "center", boxShadow: "0 0 48px rgba(34,197,94,0.35),0 8px 32px rgba(0,0,0,0.6)", animation: "fadeSlideDown 0.4s ease" }}>
           <div style={{ color: "#4ade80", fontWeight: 800, fontSize: 17 }}>🎉 RANK UP — You're now a {lvlTitle}!</div>
           <div style={{ color: "rgba(134,239,172,0.5)", fontSize: 10, marginTop: 4, fontFamily: "'Space Mono',monospace" }}>{xp.toLocaleString()} TOTAL XP EARNED</div>
         </div>
       )}
 
       {/* Scan line */}
-      <div style={{ position: "fixed", left: 0, right: 0, height: 2, zIndex: 1, pointerEvents: "none", background: "linear-gradient(90deg,transparent,rgba(34,197,94,0.06),transparent)", animation: "scanDown 8s linear infinite" }} />
+      <div className="dashboard-scanline" style={{ position: "fixed", left: 0, right: 0, height: 2, zIndex: 1, pointerEvents: "none", background: "linear-gradient(90deg,transparent,rgba(34,197,94,0.06),transparent)", animation: "scanDown 8s linear infinite" }} />
 
       {/* BG glows */}
-      <div style={{ position: "fixed", top: "5%", left: "20%", width: 800, height: 800, borderRadius: "50%", pointerEvents: "none", zIndex: 0, background: "radial-gradient(circle,rgba(34,197,94,0.04) 0%,transparent 60%)", filter: "blur(60px)" }} />
-      <div style={{ position: "fixed", bottom: "10%", right: "15%", width: 500, height: 500, borderRadius: "50%", pointerEvents: "none", zIndex: 0, background: "radial-gradient(circle,rgba(59,130,246,0.03) 0%,transparent 65%)", filter: "blur(40px)" }} />
+      <div className="dashboard-bg-glow" style={{ position: "fixed", top: "5%", left: "20%", width: 800, height: 800, borderRadius: "50%", pointerEvents: "none", zIndex: 0, background: "radial-gradient(circle,rgba(34,197,94,0.04) 0%,transparent 60%)", filter: "blur(60px)" }} />
+      <div className="dashboard-bg-glow" style={{ position: "fixed", bottom: "10%", right: "15%", width: 500, height: 500, borderRadius: "50%", pointerEvents: "none", zIndex: 0, background: "radial-gradient(circle,rgba(59,130,246,0.03) 0%,transparent 65%)", filter: "blur(40px)" }} />
 
       {/* Grid */}
-      <svg style={{ position: "fixed", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0, opacity: 0.028 }} preserveAspectRatio="none">
+      <svg className="dashboard-bg-grid" style={{ position: "fixed", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0, opacity: 0.028 }} preserveAspectRatio="none">
         {Array.from({ length: 14 }, (_, i) => <line key={`v${i}`} x1={`${(i + 1) * 6.67}%`} y1="0" x2={`${(i + 1) * 6.67}%`} y2="100%" stroke="#22c55e" strokeWidth="0.5" />)}
         {Array.from({ length: 10 }, (_, i) => <line key={`h${i}`} x1="0" y1={`${(i + 1) * 9.09}%`} x2="100%" y2={`${(i + 1) * 9.09}%`} stroke="#22c55e" strokeWidth="0.5" />)}
       </svg>

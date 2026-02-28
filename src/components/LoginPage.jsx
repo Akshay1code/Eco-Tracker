@@ -322,6 +322,7 @@ export default function EnhancedLoginWithStory() {
         
         .enhanced-login-container {
           min-height: 100vh;
+          min-height: 100dvh;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -801,6 +802,11 @@ export default function EnhancedLoginWithStory() {
         .story-link:hover::after { width: 100%; }
 
         @media (max-width: 768px) {
+          .enhanced-login-container { min-height: 100svh; padding: 12px; }
+          .gradient-orb, .aurora, .firefly, .shooting-star { opacity: 0.45; }
+          .mountains-container { bottom: 14%; height: 32%; }
+          .trees-container { bottom: 14%; height: 18%; }
+          .buildings-container { right: 2%; transform: scale(0.85); transform-origin: bottom right; }
           .story-title { font-size: 48px; }
           .story-subtitle { font-size: 22px; }
           .story-description { font-size: 18px; }
@@ -809,12 +815,16 @@ export default function EnhancedLoginWithStory() {
         }
 
         @media (max-width: 480px) {
+          .gradient-orb, .aurora, .cloud-5, .cloud-6, .cloud-7, .cloud-8, .bird-4, .bird-5 { display: none; }
+          .story-content { padding: 20px 12px; max-width: 94vw; }
           .story-title { font-size: 40px; }
           .story-subtitle { font-size: 20px; }
-          .auth-card { padding: 36px 26px; }
+          .story-description { font-size: 16px; line-height: 1.6; }
+          .auth-card { padding: 28px 18px; width: 96%; border-radius: 22px; }
           .auth-title { font-size: 24px; }
           .auth-input { font-size: 15px; padding: 14px 18px; }
           .submit-button { padding: 16px; font-size: 15px; }
+          .auth-footer { font-size: 13px; }
         }
       `}</style>
     </div>
