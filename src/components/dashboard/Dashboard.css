@@ -1,0 +1,208 @@
+:root {
+  --forest-green: #14532D;
+  --leaf-green: #22C55E;
+  --soft-yellow: #FACC15;
+  --mint-green: #A7F3D0;
+  --bg-color: #FFFFFF;
+  --text-main: #1f2937;
+  --text-muted: #4b5563;
+  --card-shadow: 0 10px 25px rgba(34, 197, 94, 0.1);
+  --card-hover-shadow: 0 20px 30px rgba(34, 197, 94, 0.2);
+}
+
+.dashboard-container {
+  min-height: 100vh;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  font-family: 'Inter', -apple-system, sans-serif;
+  position: relative;
+  overflow-x: hidden;
+  padding: 2rem;
+  /* Always force light theme */
+  color-scheme: light;
+}
+
+/* Background Animated Leaves */
+.bg-leaf {
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  background: radial-gradient(circle at top left, var(--mint-green) 0%, transparent 70%);
+  border-radius: 50% 0 50% 50%;
+  opacity: 0.15;
+  filter: blur(40px);
+  z-index: 0;
+  pointer-events: none;
+  animation: float-leaf 15s infinite ease-in-out;
+}
+
+.bg-leaf-1 { top: -5%; left: -5%; animation-duration: 18s; }
+.bg-leaf-2 { top: 40%; right: -10%; animation-duration: 22s; animation-delay: -5s; }
+.bg-leaf-3 { bottom: -10%; left: 30%; animation-duration: 25s; animation-delay: -10s; }
+
+@keyframes float-leaf {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-30px) rotate(10deg); }
+}
+
+.dashboard-header {
+  text-align: center;
+  position: relative;
+  z-index: 10;
+  margin-bottom: 2rem;
+}
+
+.dashboard-header h1 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--forest-green), var(--leaf-green));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 0.5rem;
+}
+
+.dashboard-header .subtitle {
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.dashboard-main {
+  display: grid;
+  grid-template-columns: 300px 1fr 300px;
+  gap: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 10;
+}
+
+@media (max-width: 1200px) {
+  .dashboard-main {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Shared Card Styles */
+.eco-card {
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 1.5rem;
+  box-shadow: var(--card-shadow);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+  border: 1px solid rgba(167, 243, 208, 0.3);
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.eco-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, var(--leaf-green), var(--mint-green));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.eco-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--card-hover-shadow);
+}
+
+.eco-card:hover::before {
+  opacity: 1;
+}
+
+/* Specific Card Shapes */
+.leaf-card {
+  border-radius: 40px 10px 40px 10px; /* Leaf shape */
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--leaf-green);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--forest-green);
+}
+
+/* Modals */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fade-in 0.3s ease-out forwards;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 24px;
+  padding: 2.5rem;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 25px 50px rgba(20, 83, 45, 0.15);
+  border: 1px solid var(--mint-green);
+  animation: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  position: relative;
+}
+
+.close-btn {
+  position: absolute;
+  top: 1rem; right: 1.5rem;
+  background: none; border: none;
+  font-size: 1.5rem; color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.close-btn:hover { color: var(--forest-green); }
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(40px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Animations that we'll trigger using classes */
+.green-glow {
+  animation: success-glow 1s ease-out forwards;
+}
+
+@keyframes success-glow {
+  0% { box-shadow: 0 0 0 rgba(34, 197, 94, 0); }
+  50% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.6); }
+  100% { box-shadow: var(--card-shadow); }
+}
+
+.xp-float {
+  position: absolute;
+  color: var(--leaf-green);
+  font-weight: bold;
+  pointer-events: none;
+  animation: xp-rise 1s ease-out forwards;
+}
+
+@keyframes xp-rise {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-40px) scale(1.5); }
+}

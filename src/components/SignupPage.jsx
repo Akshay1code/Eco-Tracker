@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 
-export default function GamifiedSignup() {
-  const navigate = useNavigate();
+export default function GamifiedSignup({ onNavigate }) {
+  const navigateTo = (path) => {
+    if (onNavigate) {
+      onNavigate(path);
+      return;
+    }
+    window.location.href = path;
+  };
   const [phase, setPhase] = useState('intro');
   const [storyStep, setStoryStep] = useState(0);
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -205,7 +210,7 @@ export default function GamifiedSignup() {
     setPhase('success');
     setTimeout(() => {
       localStorage.setItem('isLoggedIn', 'true');
-      navigate('/dashboard');
+      navigateTo('/dashboard');
     }, 4000);
   };
 
@@ -1344,6 +1349,168 @@ export default function GamifiedSignup() {
         @keyframes badgePop {
           0% { transform: scale(0) rotate(-90deg); }
           100% { transform: scale(1) rotate(0deg); }
+        }
+
+        /* ===== ECO THEME OVERRIDES (Calm + Simple) ===== */
+        .signup-container {
+          font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        .gradient-mesh {
+          background:
+            radial-gradient(ellipse at 20% 30%, rgba(22, 163, 74, 0.16) 0%, transparent 50%),
+            radial-gradient(ellipse at 80% 70%, rgba(16, 185, 129, 0.14) 0%, transparent 50%),
+            radial-gradient(ellipse at 50% 50%, rgba(110, 231, 183, 0.1) 0%, transparent 50%),
+            linear-gradient(135deg, #eefbf3 0%, #dff7ea 100%);
+        }
+
+        .shape-1,
+        .shape-6 {
+          background: #14532d;
+        }
+
+        .shape-2,
+        .shape-7 {
+          background: #166534;
+        }
+
+        .shape-3,
+        .shape-8 {
+          background: #10b981;
+        }
+
+        .shape-4 {
+          background: #22c55e;
+        }
+
+        .shape-5 {
+          background: #6ee7b7;
+        }
+
+        .achievement-notification {
+          background: linear-gradient(135deg, #14532d 0%, #16a34a 100%);
+          box-shadow: 0 10px 36px rgba(20, 83, 45, 0.36);
+        }
+
+        .achievement-xp {
+          color: #fef08a;
+        }
+
+        .score-badge {
+          border-color: rgba(34, 197, 94, 0.45);
+          box-shadow: 0 6px 18px rgba(15, 61, 42, 0.14);
+        }
+
+        .score-text {
+          color: #0a2e1e;
+        }
+
+        .combo-indicator {
+          background: linear-gradient(135deg, #f59e0b, #fcd34d);
+          color: #3a2100;
+          box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
+        }
+
+        .intro-card,
+        .story-card,
+        .question-card {
+          background: rgba(255, 255, 255, 0.93);
+          border: 1px solid rgba(34, 197, 94, 0.2);
+          box-shadow: 0 18px 42px rgba(6, 30, 21, 0.16);
+        }
+
+        .intro-title,
+        .phase-title,
+        .question-title,
+        .success-title {
+          color: #0a2e1e;
+          font-family: 'Syne', 'DM Sans', sans-serif;
+          font-weight: 800;
+        }
+
+        .intro-subtitle,
+        .phase-desc,
+        .question-subtitle,
+        .success-message {
+          color: #3f5f4f;
+        }
+
+        .phase-badge {
+          background: rgba(34, 197, 94, 0.1);
+          border-color: rgba(34, 197, 94, 0.35);
+          color: #166534;
+        }
+
+        .indicator.done,
+        .indicator.active,
+        .progress-bar {
+          background: linear-gradient(90deg, #16a34a, #22c55e);
+          border-color: #16a34a;
+        }
+
+        .progress-track {
+          background: rgba(34, 197, 94, 0.12);
+        }
+
+        .progress-label {
+          color: #22543d;
+        }
+
+        .input-field,
+        .select-field,
+        .textarea-field,
+        .choice-btn,
+        .interest-btn {
+          border-color: rgba(34, 197, 94, 0.28);
+          color: #0f1a14;
+          background: #fcfffd;
+          font-family: 'DM Sans', sans-serif;
+        }
+
+        .input-field:focus,
+        .select-field:focus,
+        .textarea-field:focus {
+          border-color: #22c55e;
+          box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.13);
+        }
+
+        .choice-btn.selected,
+        .interest-btn.selected,
+        .nav-btn.next,
+        .loading-bar {
+          background: linear-gradient(135deg, #14532d, #22c55e);
+          border-color: #166534;
+          color: #fff;
+        }
+
+        .skip-btn,
+        .nav-btn.back {
+          border: 1px solid rgba(34, 197, 94, 0.35);
+          color: #14532d;
+          background: rgba(255, 255, 255, 0.86);
+          font-family: 'DM Sans', sans-serif;
+        }
+
+        .skip-btn:hover,
+        .nav-btn.back:hover {
+          box-shadow: 0 8px 20px rgba(20, 83, 45, 0.12);
+        }
+
+        .field-group label,
+        .achievement-label {
+          color: #2e5a47;
+        }
+
+        .success-container {
+          background: linear-gradient(140deg, rgba(10, 46, 30, 0.92), rgba(22, 101, 52, 0.92));
+        }
+
+        .final-score-display {
+          border-color: rgba(110, 231, 183, 0.35);
+        }
+
+        .final-score-value {
+          color: #6ee7b7;
         }
 
         /* ===== RESPONSIVE ===== */

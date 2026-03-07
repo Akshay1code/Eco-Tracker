@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 
-export default function EnhancedLoginWithStory() {
-  const navigate = useNavigate();
+export default function EnhancedLoginWithStory({ onNavigate }) {
+  const navigateTo = (path) => {
+    if (onNavigate) {
+      onNavigate(path);
+      return;
+    }
+    window.location.href = path;
+  };
   const [storyPhase, setStoryPhase] = useState(0);
   const [showAuth, setShowAuth] = useState(false);
   const [authMode] = useState('login');
@@ -19,7 +24,7 @@ export default function EnhancedLoginWithStory() {
   useEffect(() => {
     const isLoggedIn = localStorage.getItem('isLoggedIn');
     if (isLoggedIn === 'true') {
-      navigate('/dashboard');
+      navigateTo('/dashboard');
     } else {
       const timer1 = setTimeout(() => setStoryPhase(1), 1000);
       const timer2 = setTimeout(() => setStoryPhase(2), 3000);
@@ -36,7 +41,7 @@ export default function EnhancedLoginWithStory() {
         clearTimeout(timer4);
       };
     }
-  }, [navigate]);
+  }, []);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -63,7 +68,7 @@ export default function EnhancedLoginWithStory() {
     
     setTimeout(() => {
       localStorage.setItem('isLoggedIn', 'true');
-      navigate('/dashboard');
+      navigateTo('/dashboard');
     }, 2000);
   };
 
@@ -74,7 +79,7 @@ export default function EnhancedLoginWithStory() {
 
   // ✅ FIX: Navigate to Signup.jsx instead of doing in-component story
   const goToSignup = () => {
-    navigate('/signup');
+    navigateTo('/signup');
   };
 
   return (
@@ -800,6 +805,126 @@ export default function EnhancedLoginWithStory() {
         .story-link::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 0; height: 2px; background: #00bcd4; transition: width 0.3s ease; }
         .story-link:hover { color: #00bcd4; }
         .story-link:hover::after { width: 100%; }
+
+        /* ===== ECO THEME OVERRIDES (Calm + Simple) ===== */
+        .enhanced-login-container {
+          font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        .sky-background {
+          background: linear-gradient(
+            to bottom,
+            #081d14 0%,
+            #0f3d2a 30%,
+            #166534 65%,
+            #6ee7b7 100%
+          );
+          animation: none;
+        }
+
+        .sun {
+          background: radial-gradient(circle, #fefce8, #fde68a, #f59e0b);
+          box-shadow:
+            0 0 40px rgba(252, 211, 77, 0.55),
+            0 0 90px rgba(245, 158, 11, 0.3);
+        }
+
+        .aurora,
+        .starfield,
+        .shooting-star,
+        .firefly {
+          opacity: 0.25;
+        }
+
+        .mountain-back-1,
+        .mountain-back-2,
+        .mountain-mid-1,
+        .mountain-mid-2,
+        .mountain-front-1,
+        .mountain-front-2 {
+          border-bottom-color: rgba(15, 61, 42, 0.75);
+        }
+
+        .ground {
+          background: linear-gradient(to bottom, #355a47 0%, #264536 50%, #1b3328 100%);
+        }
+
+        .auth-card {
+          background: rgba(255, 255, 255, 0.94);
+          border: 1px solid rgba(34, 197, 94, 0.2);
+          box-shadow:
+            0 24px 46px rgba(6, 30, 21, 0.24),
+            0 0 0 1px rgba(255, 255, 255, 0.65) inset;
+        }
+
+        .auth-title {
+          color: #0a2e1e;
+          font-family: 'Syne', 'DM Sans', sans-serif;
+          font-weight: 800;
+        }
+
+        .auth-subtitle {
+          color: #355a47;
+        }
+
+        .input-group label {
+          color: #22543d;
+        }
+
+        .label-icon {
+          color: #16a34a;
+        }
+
+        .auth-input {
+          border-color: rgba(34, 197, 94, 0.28);
+          background: #fbfefc;
+        }
+
+        .auth-input:focus {
+          border-color: #22c55e;
+          box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.14), 0 8px 18px rgba(22, 163, 74, 0.18);
+        }
+
+        .remember-me,
+        .forgot-link,
+        .auth-footer {
+          color: #355a47;
+        }
+
+        .forgot-link,
+        .story-link {
+          color: #166534;
+        }
+
+        .forgot-link::after,
+        .story-link::after {
+          background: #22c55e;
+        }
+
+        .submit-button {
+          background: linear-gradient(135deg, #14532d, #22c55e);
+          box-shadow: 0 8px 20px rgba(22, 163, 74, 0.35);
+        }
+
+        .submit-button:hover {
+          box-shadow: 0 12px 26px rgba(22, 163, 74, 0.4);
+        }
+
+        .story-overlay.active {
+          background: rgba(8, 20, 14, 0.68);
+        }
+
+        .story-title {
+          text-shadow: 0 0 18px rgba(110, 231, 183, 0.45), 0 4px 22px rgba(0, 0, 0, 0.45);
+        }
+
+        .skip-story-btn {
+          border-color: rgba(110, 231, 183, 0.45);
+        }
+
+        .success-fullscreen {
+          background: linear-gradient(140deg, #0b2f1f, #166534, #22c55e);
+        }
 
         @media (max-width: 768px) {
           .enhanced-login-container { min-height: 100svh; padding: 12px; }

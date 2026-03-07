@@ -1,23 +1,153 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import Sidebar from './components/layout/Sidebar.jsx';
+import LeafSVG from './components/shared/LeafSVG.jsx';
+import DashboardView from './views/DashboardView.jsx';
+import ActivityView from './views/ActivityView.jsx';
+import CommunityView from './views/CommunityView.jsx';
+import JournalView from './views/JournalView.jsx';
+import GoalsView from './views/GoalsView.jsx';
+import SettingsView from './views/SettingsView.jsx';
+import CalModal from './components/modals/CalModal.jsx';
+import ProfileModal from './components/modals/ProfileModal.jsx';
+import GameIntro from './components/GameIntro.jsx';
 import LoginPage from './components/LoginPage.jsx';
 import SignupPage from './components/SignupPage.jsx';
-import Dashboard from './components/Dashboard.jsx'; 
-import GameIntro from './components/GameIntro.jsx';
 
+function FloatingLeaves() {
+  const leaves = [
+    { left: '4%', top: '8%', cls: 'leaf-float', opacity: 0.22 },
+    { left: '90%', top: '12%', cls: 'leaf-float-2', opacity: 0.18 },
+    { left: '8%', top: '78%', cls: 'leaf-float-3', opacity: 0.25 },
+    { left: '86%', top: '72%', cls: 'leaf-float', opacity: 0.15 },
+    { left: '48%', top: '4%', cls: 'leaf-float-2', opacity: 0.2 },
+    { left: '52%', top: '88%', cls: 'leaf-float-3', opacity: 0.17 },
+  ];
+
+  return (
+    <div className="floating-leaves" aria-hidden="true">
+      {leaves.map((leaf, i) => (
+        <div
+          key={i}
+          className={leaf.cls}
+          style={{ position: 'fixed', left: leaf.left, top: leaf.top, opacity: leaf.opacity }}
+        >
+          <LeafSVG size={32} />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function App() {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [calModal, setCalModal] = useState(null);
+  const [profileModal, setProfileModal] = useState(null);
+  const [screen, setScreen] = useState('app');
+  
+  const handleLogout = () => {
+    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userPassword');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('userScore');
+    localStorage.removeItem('userProfile');
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith('eco_')) {
+        localStorage.removeItem(key);
+      }
+    });
+    setScreen('intro');
+  };
+
+  const viewProps = {
+    dashboard: { onCalClick: setCalModal, onUserClick: setProfileModal, onLogout: handleLogout },
+    activity: { onLogout: handleLogout },
+    community: { onUserClick: setProfileModal, onLogout: handleLogout },
+    journal: { onLogout: handleLogout },
+    goals: { onLogout: handleLogout },
+    settings: { onLogout: handleLogout },
+  };
+
+  const viewMap = useMemo(
+    () => ({
+      dashboard: DashboardView,
+      activity: ActivityView,
+      community: CommunityView,
+      journal: JournalView,
+      goals: GoalsView,
+      settings: SettingsView,
+    }),
+    []
+  );
+
+  const ActiveView = viewMap[activeTab] || DashboardView;
+
+  if (screen === 'intro') {
+    return (
+      <GameIntro
+        onComplete={() => setScreen('login')}
+        onNavigate={(path) => {
+          if (path === '/login') {
+            setScreen('login');
+            return;
+          }
+          setScreen('app');
+        }}
+      />
+    );
+  }
+
+  if (screen === 'login') {
+    return (
+      <LoginPage
+        onNavigate={(path) => {
+          if (path === '/dashboard') {
+            setScreen('app');
+            return;
+          }
+          if (path === '/signup') {
+            setScreen('signup');
+            return;
+          }
+          window.location.href = path;
+        }}
+      />
+    );
+  }
+
+  if (screen === 'signup') {
+    return (
+      <SignupPage
+        onNavigate={(path) => {
+          if (path === '/dashboard') {
+            setScreen('app');
+            return;
+          }
+          if (path === '/login') {
+            setScreen('login');
+            return;
+          }
+          window.location.href = path;
+        }}
+      />
+    );
+  }
+
   return (
-    <Router>
-      <Routes>
-        {/* Set Login as the default landing page */}
-        <Route path="/" element={<Navigate to="/game"/>} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/game" element={<GameIntro/>}/>
-      </Routes>
-    </Router>
+    <div className="app-shell-wrap">
+      <FloatingLeaves />
+      <div className="app-shell">
+        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+        <main className="app-main">
+          <div key={activeTab} className="view-enter">
+            <ActiveView activeTab={activeTab} {...viewProps[activeTab]} />
+          </div>
+        </main>
+      </div>
+
+      {calModal !== null ? <CalModal day={calModal} onClose={() => setCalModal(null)} /> : null}
+      {profileModal ? <ProfileModal user={profileModal} onClose={() => setProfileModal(null)} /> : null}
+    </div>
   );
 }
 
