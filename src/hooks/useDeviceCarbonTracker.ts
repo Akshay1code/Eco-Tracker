@@ -48,15 +48,19 @@ const EARTH_RADIUS_KM = 6371;
 const GPS_SAMPLE_INTERVAL_MS = 60_000;
 const GPS_CACHE_MAX_AGE_MS = 60_000;
 const GPS_TIMEOUT_MS = 10_000;
-const GPS_MOVEMENT_THRESHOLD_METERS = 20;
+const GPS_MOVEMENT_THRESHOLD_METERS = 50;
 const GPS_MAX_ACCEPTABLE_ACCURACY_METERS = 100;
-const GPS_STEP_VALIDATION_DISTANCE_METERS = 5;
+const GPS_STEP_VALIDATION_DISTANCE_METERS = 50;
 const GPS_STEP_SPEED_LIMIT_MPS = 3;
 const GRAVITY_METERS_PER_SECOND_SQUARED = 9.81;
-const LINEAR_ACCELERATION_THRESHOLD_MS2 = 1.2;
 const G_UNIT_MAX_MAGNITUDE = 3.5;
+const MIN_WALKING_TOTAL_ACCELERATION_G = 1.2;
+const MAX_WALKING_TOTAL_ACCELERATION_G = 1.45;
+const NORMAL_WALKING_CADENCE_MIN_HZ = 1.4;
+const NORMAL_WALKING_CADENCE_MAX_HZ = 2.3;
 const STEP_LENGTH_METERS = 0.78;
-const MIN_STEP_INTERVAL_MS = 250;
+const MIN_STEP_INTERVAL_MS = Math.round(1000 / NORMAL_WALKING_CADENCE_MAX_HZ);
+const MAX_STEP_INTERVAL_MS = Math.round(1000 / NORMAL_WALKING_CADENCE_MIN_HZ);
 const PATTERN_SPIKE_COUNT = 3;
 const MAX_PATTERN_GAP_MS = 2_000;
 const CARBON_SAVED_PER_KM_WALKED = 0.0002;
@@ -120,6 +124,7 @@ export default function useDeviceCarbonTracker(userEmail: string | null): Device
   const gpsValidationRef = useRef<{ point: GeoPoint; at: number } | null>(null);
   const lastCandidateSpikeTsRef = useRef(0);
   const consecutiveSpikeCountRef = useRef(0);
+  const pendingMotionStepsRef = useRef(0);
   const movementCarryMetersRef = useRef(0);
   const lastMovementTsRef = useRef(0);
   const sampleTimerRef = useRef<number | null>(null);
@@ -144,6 +149,7 @@ export default function useDeviceCarbonTracker(userEmail: string | null): Device
   const resetMotionStepValidation = useCallback(() => {
     lastCandidateSpikeTsRef.current = 0;
     consecutiveSpikeCountRef.current = 0;
+    pendingMotionStepsRef.current = 0;
   }, []);
 
   useEffect(() => {
@@ -238,11 +244,14 @@ export default function useDeviceCarbonTracker(userEmail: string | null): Device
       const y = acc.y ?? 0;
       const z = acc.z ?? 0;
       const magnitude = normalizeAccelerationMagnitude(Math.sqrt(x * x + y * y + z * z));
-      const linearMotion = Math.abs(magnitude - GRAVITY_METERS_PER_SECOND_SQUARED);
+      const totalAccelerationG = magnitude / GRAVITY_METERS_PER_SECOND_SQUARED;
       const now = Date.now();
       const sinceLastSpike = now - lastCandidateSpikeTsRef.current;
 
-      if (linearMotion < LINEAR_ACCELERATION_THRESHOLD_MS2) {
+      if (
+        totalAccelerationG < MIN_WALKING_TOTAL_ACCELERATION_G ||
+        totalAccelerationG > MAX_WALKING_TOTAL_ACCELERATION_G
+      ) {
         return;
       }
 
@@ -250,7 +259,7 @@ export default function useDeviceCarbonTracker(userEmail: string | null): Device
         return;
       }
 
-      if (sinceLastSpike > MAX_PATTERN_GAP_MS) {
+      if (sinceLastSpike > MAX_PATTERN_GAP_MS || sinceLastSpike > MAX_STEP_INTERVAL_MS) {
         consecutiveSpikeCountRef.current = 0;
       }
 
@@ -262,14 +271,12 @@ export default function useDeviceCarbonTracker(userEmail: string | null): Device
       }
 
       const stepDelta = consecutiveSpikeCountRef.current === PATTERN_SPIKE_COUNT ? PATTERN_SPIKE_COUNT : 1;
-      setSteps((prevSteps) => prevSteps + stepDelta);
-      setActivity('walking');
-      markMovement();
+      pendingMotionStepsRef.current += stepDelta;
     };
 
     window.addEventListener('devicemotion', onMotion);
     return () => window.removeEventListener('devicemotion', onMotion);
-  }, [markMovement, supported.motion]);
+  }, [supported.motion]);
 
   useEffect(() => {
     if (!supported.geolocation || typeof navigator === 'undefined' || typeof window === 'undefined') {
@@ -348,6 +355,21 @@ export default function useDeviceCarbonTracker(userEmail: string | null): Device
               : validationFallbackSpeedMps;
           const stepValidationPassed =
             validationMovedMeters >= GPS_STEP_VALIDATION_DISTANCE_METERS && speedMps <= GPS_STEP_SPEED_LIMIT_MPS;
+          let committedMotionSteps = 0;
+
+          if (pendingMotionStepsRef.current > 0) {
+            if (stepValidationPassed) {
+              committedMotionSteps = pendingMotionStepsRef.current;
+              pendingMotionStepsRef.current = 0;
+              setSteps((prevSteps) => prevSteps + committedMotionSteps);
+              markMovement();
+            } else if (
+              validationMovedMeters < GPS_STEP_VALIDATION_DISTANCE_METERS ||
+              speedMps > GPS_STEP_SPEED_LIMIT_MPS
+            ) {
+              resetMotionStepValidation();
+            }
+          }
 
           if (!prev) {
             prevLocationRef.current = { point, at: now };
@@ -363,7 +385,7 @@ export default function useDeviceCarbonTracker(userEmail: string | null): Device
           if (movedMeters <= GPS_MOVEMENT_THRESHOLD_METERS) {
             setActivity(stepValidationPassed ? 'walking' : speedMps > GPS_STEP_SPEED_LIMIT_MPS ? 'vehicle' : 'idle');
             setSpeed(stepValidationPassed ? speedMps * 3.6 : 0);
-            if (stepValidationPassed) {
+            if (stepValidationPassed || committedMotionSteps > 0) {
               markMovement();
             }
             scheduleNextSample();
@@ -395,21 +417,28 @@ export default function useDeviceCarbonTracker(userEmail: string | null): Device
 
             if (!supported.motion || motionPermissionRef.current !== 'granted') {
               movementCarryMetersRef.current += movedMeters;
-              const estimatedSteps = Math.floor(movementCarryMetersRef.current / STEP_LENGTH_METERS);
-              if (estimatedSteps > 0) {
-                setSteps((prevSteps) => prevSteps + estimatedSteps);
-                movementCarryMetersRef.current -= estimatedSteps * STEP_LENGTH_METERS;
+              const fallbackSteps = Math.floor(movementCarryMetersRef.current / STEP_LENGTH_METERS);
+              if (fallbackSteps > 0) {
+                setSteps((prevSteps) => prevSteps + fallbackSteps);
+                movementCarryMetersRef.current -= fallbackSteps * STEP_LENGTH_METERS;
               }
-            } else if (storageSpeedMps > GPS_STEP_SPEED_LIMIT_MPS) {
+            } else if (committedMotionSteps === 0 || storageSpeedMps > GPS_STEP_SPEED_LIMIT_MPS) {
               resetMotionStepValidation();
             }
           }
+
+          const stepsDeltaToReport =
+            committedMotionSteps > 0
+              ? committedMotionSteps
+              : nextActivity === 'walking' && (!supported.motion || motionPermissionRef.current !== 'granted')
+                ? Math.max(1, Math.floor(movedMeters / STEP_LENGTH_METERS))
+                : 0;
 
           if (userEmail) {
             void sendActivityTrigger({
               userId: userEmail,
               distanceMeters: Number(movedMeters.toFixed(2)),
-              stepsDelta: estimatedSteps,
+              stepsDelta: stepsDeltaToReport,
               activeMinutes: activeMinutesDelta,
               activityType: nextActivity,
               timestamp: new Date(now).toISOString(),
