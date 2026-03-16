@@ -1,4 +1,4 @@
-function CarbonGauge({ score = 0.41 }) {
+function CarbonGauge({ score = 0 }) {
   const r = 54;
   const circumference = 2 * Math.PI * r;
   const progress = Math.max(0, Math.min(1, score));

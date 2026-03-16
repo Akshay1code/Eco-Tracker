@@ -6,6 +6,7 @@ import EcoCalendar from '../components/dashboard/EcoCalendar.jsx';
 import EcoTodos from '../components/dashboard/EcoTodos.jsx';
 import QuoteCard from '../components/dashboard/QuoteCard.jsx';
 import LeaderboardRow from '../components/community/LeaderboardRow.jsx';
+import TrackerAlertModal from '../components/modals/TrackerAlertModal.jsx';
 import { LEADERBOARD, METRICS } from '../data/mockData.js';
 import useDeviceCarbonTracker from '../hooks/useDeviceCarbonTracker.ts';
 
@@ -13,6 +14,8 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
   const topFive = LEADERBOARD.slice(0, 5);
   const storedEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
   const tracker = useDeviceCarbonTracker(storedEmail);
+  const chargeEnergyProgress = Math.min((tracker.chargingEnergyKwh / 0.05) * 100, 100);
+  const chargeCarbonProgress = Math.min((tracker.chargingCarbonKg / 0.05) * 100, 100);
 
   const liveMetrics = METRICS.map((metric) => {
     if (metric.label === 'Steps Walked') {
@@ -38,21 +41,23 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
     if (metric.label === 'Carbon Saved') {
       return {
         ...metric,
-        value: tracker.carbon.toFixed(3),
+        label: 'Charge CO2',
+        value: tracker.chargingCarbonKg.toFixed(4),
         unit: 'kg CO2',
-        progress: Math.min((tracker.carbon / 0.7) * 100, 100),
+        progress: chargeCarbonProgress,
       };
     }
     if (metric.label === 'Device Energy') {
       return {
         ...metric,
-        value: tracker.batteryUsed.toFixed(1),
-        unit: '% used',
-        progress: Math.min(tracker.batteryUsed, 100),
+        label: 'Charge Energy',
+        value: tracker.chargingEnergyKwh.toFixed(4),
+        unit: 'kWh',
+        progress: chargeEnergyProgress,
       };
     }
     if (metric.label === 'Eco Score') {
-      const score = Math.max(0, Math.min(100, 100 - tracker.carbon * 100));
+      const score = Math.max(0, Math.min(100, 100 - (tracker.carbon + tracker.chargingCarbonKg) * 100));
       return { ...metric, value: `${Math.round(score)}`, unit: '/ 100', progress: score };
     }
     return metric;
@@ -63,7 +68,7 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
       <TopBar activeTab={activeTab} onLogout={onLogout} />
       <HeroCard deviceData={tracker} onRequestMotionAccess={tracker.requestMotionAccess} />
 
-      <SectionHeader title="Carbon Activity Metrics" subtitle="Track daily movement, energy, and carbon signals in one glance." />
+      <SectionHeader title="Carbon Activity Metrics" subtitle="Battery-optimized GPS sampling keeps movement, steps, and carbon signals current without constant location polling." />
       <MetricsGrid metrics={liveMetrics} />
 
       <div className="two-col" style={{ marginTop: 20 }}>
@@ -83,6 +88,10 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
         <EcoTodos />
         <QuoteCard />
       </div>
+
+      {tracker.batteryAlert ? (
+        <TrackerAlertModal alert={tracker.batteryAlert} onClose={tracker.dismissBatteryAlert} />
+      ) : null}
     </div>
   );
 }

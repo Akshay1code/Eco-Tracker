@@ -1,7 +1,8 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import TopBar from '../components/layout/TopBar.jsx';
 import SectionHeader from '../components/shared/SectionHeader.jsx';
 import Avatar from '../components/shared/Avatar.jsx';
+import '../styles/settings.css';
 
 function SettingsView({ onLogout, activeTab = 'settings' }) {
   const [name, setName] = useState('Eco Explorer');
@@ -13,6 +14,23 @@ function SettingsView({ onLogout, activeTab = 'settings' }) {
   });
   const [unit, setUnit] = useState('kg CO2');
   const [confirmReset, setConfirmReset] = useState(false);
+  const notificationItems = [
+    {
+      key: 'reminders',
+      title: 'Daily reminders',
+      description: 'Nudges to log movement and carbon progress every day.',
+    },
+    {
+      key: 'streak',
+      title: 'Streak alerts',
+      description: 'Warnings before your tracking streak is about to break.',
+    },
+    {
+      key: 'community',
+      title: 'Community updates',
+      description: 'Highlights from friends, rankings, and weekly challenge posts.',
+    },
+  ];
 
   const setToggle = (key) => {
     setToggles((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -24,42 +42,73 @@ function SettingsView({ onLogout, activeTab = 'settings' }) {
   };
 
   return (
-    <div>
+    <div className="settings-view">
       <TopBar activeTab={activeTab} onLogout={onLogout} />
       <SectionHeader title="Settings" subtitle="Tune your profile and gameplay preferences." />
 
-      <section className="card-white" style={{ padding: 18 }}>
-        <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-          <Avatar name={name} size={64} />
-          <div style={{ flex: 1 }}>
-            <label>
-              <span>Name</span>
-              <input value={name} onChange={(e) => setName(e.target.value)} />
+      <section className="card-white settings-panel">
+        <div className="settings-panel-head">
+          <h3>Profile</h3>
+          <span>Public identity</span>
+        </div>
+
+        <div className="settings-profile-row">
+          <div className="settings-avatar-wrap">
+            <Avatar name={name} size={64} />
+          </div>
+          <div className="settings-field-wrap">
+            <label className="settings-field">
+              <span className="settings-label">Display name</span>
+              <input className="settings-input" value={name} onChange={(e) => setName(e.target.value)} />
             </label>
           </div>
         </div>
 
-        <label style={{ display: 'block', marginTop: 12 }}>
-          <span>Bio</span>
-          <textarea rows={3} value={bio} onChange={(e) => setBio(e.target.value)} />
+        <label className="settings-field settings-field--bio">
+          <span className="settings-label">Bio</span>
+          <textarea className="settings-textarea" rows={3} value={bio} onChange={(e) => setBio(e.target.value)} />
         </label>
       </section>
 
       <SectionHeader title="Notifications" />
-      <section className="card-white" style={{ padding: 18, display: 'grid', gap: 10 }}>
-        <div className="toggle-row"><span>Daily reminders</span><button type="button" className={`toggle ${toggles.reminders ? 'on' : ''}`} onClick={() => setToggle('reminders')} /></div>
-        <div className="toggle-row"><span>Streak alerts</span><button type="button" className={`toggle ${toggles.streak ? 'on' : ''}`} onClick={() => setToggle('streak')} /></div>
-        <div className="toggle-row"><span>Community updates</span><button type="button" className={`toggle ${toggles.community ? 'on' : ''}`} onClick={() => setToggle('community')} /></div>
+      <section className="card-white settings-panel">
+        <div className="settings-panel-head">
+          <h3>Alert controls</h3>
+          <span>Real-time nudges</span>
+        </div>
+
+        <div className="settings-stack">
+          {notificationItems.map((item) => (
+            <div key={item.key} className="toggle-row settings-toggle-row">
+              <div className="settings-toggle-copy">
+                <span className="settings-toggle-title">{item.title}</span>
+                <span className="settings-toggle-description">{item.description}</span>
+              </div>
+              <button
+                type="button"
+                className={`toggle ${toggles[item.key] ? 'on' : ''}`}
+                onClick={() => setToggle(item.key)}
+                aria-label={item.title}
+                aria-pressed={toggles[item.key]}
+              />
+            </div>
+          ))}
+        </div>
       </section>
 
       <SectionHeader title="Units" />
-      <section className="card-white" style={{ padding: 18 }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <section className="card-white settings-panel">
+        <div className="settings-panel-head">
+          <h3>Carbon units</h3>
+          <span>Personal preference</span>
+        </div>
+
+        <div className="settings-unit-group">
           {['kg CO2', 'lbs CO2'].map((item) => (
             <button
               key={item}
               type="button"
-              className={`pill-button ${unit === item ? 'active' : ''}`}
+              className={`pill-button settings-unit-btn ${unit === item ? 'active' : ''}`}
               onClick={() => setUnit(item)}
             >
               {item}
@@ -67,38 +116,33 @@ function SettingsView({ onLogout, activeTab = 'settings' }) {
           ))}
         </div>
 
-        <div
-          style={{
-            marginTop: 14,
-            padding: '12px 14px',
-            borderRadius: 12,
-            background: 'var(--mint)',
-            color: 'var(--deep)',
-            fontWeight: 600,
-          }}
-        >
-          Always light theme for best experience {'\uD83C\uDF3F'}
+        <div className="settings-hint">
+          Your tracker summary will be shown using <strong>{unit}</strong> across charts and cards.
         </div>
       </section>
 
       <SectionHeader title="Danger Zone" />
-      <section className="card-white" style={{ padding: 18 }}>
+      <section className="card-white settings-panel settings-danger-panel">
+        <div className="settings-panel-head">
+          <h3>Reset data</h3>
+          <span>Irreversible action</span>
+        </div>
         {!confirmReset ? (
-          <button type="button" className="danger-btn" onClick={() => setConfirmReset(true)}>
+          <button type="button" className="danger-btn settings-danger-btn" onClick={() => setConfirmReset(true)}>
             Reset Progress
           </button>
         ) : (
-          <div>
-            <p style={{ color: '#b91c1c', fontWeight: 700 }}>Are you sure? This cannot be undone.</p>
-            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <button type="button" className="danger-btn" onClick={resetProgress}>Confirm</button>
-              <button type="button" className="mini-btn" onClick={() => setConfirmReset(false)}>Cancel</button>
+          <div className="settings-danger-confirm">
+            <p className="settings-danger-text">Are you sure? This cannot be undone.</p>
+            <div className="settings-action-row">
+              <button type="button" className="danger-btn settings-danger-btn" onClick={resetProgress}>Confirm</button>
+              <button type="button" className="mini-btn settings-cancel-btn" onClick={() => setConfirmReset(false)}>Cancel</button>
             </div>
           </div>
         )}
       </section>
 
-      <button type="button" className="save-btn" style={{ marginTop: 16 }}>
+      <button type="button" className="save-btn settings-save-btn">
         Save Settings
       </button>
     </div>
@@ -106,4 +150,3 @@ function SettingsView({ onLogout, activeTab = 'settings' }) {
 }
 
 export default SettingsView;
-

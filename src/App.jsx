@@ -10,8 +10,8 @@ import SettingsView from './views/SettingsView.jsx';
 import CalModal from './components/modals/CalModal.jsx';
 import ProfileModal from './components/modals/ProfileModal.jsx';
 import GameIntro from './components/GameIntro.jsx';
-import LoginPage from './components/LoginPage.jsx';
-import SignupPage from './components/SignupPage.jsx';
+import LoginPage from './pages/LoginPage.jsx';
+import SignupPage from './pages/SignupPage.jsx';
 
 function FloatingLeaves() {
   const leaves = [
@@ -100,6 +100,7 @@ function App() {
   if (screen === 'login') {
     return (
       <LoginPage
+        onSwitchToSignup={() => setScreen('signup')}
         onNavigate={(path) => {
           if (path === '/dashboard') {
             setScreen('app');
@@ -118,6 +119,7 @@ function App() {
   if (screen === 'signup') {
     return (
       <SignupPage
+        onSwitchToLogin={() => setScreen('login')}
         onNavigate={(path) => {
           if (path === '/dashboard') {
             setScreen('app');

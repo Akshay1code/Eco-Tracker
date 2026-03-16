@@ -13,11 +13,33 @@ function HeroCard({ onXPData, deviceData, onRequestMotionAccess }) {
     return { totalXP, level, levelPct };
   }, []);
 
-  const liveScore = Math.max(0, Math.min(0.99, deviceData?.carbon ?? 0));
+  const liveScore = Math.max(
+    0,
+    Math.min(0.99, (deviceData?.carbon ?? 0) + (deviceData?.chargingCarbonKg ?? 0))
+  );
   const liveSteps = deviceData?.steps ?? 0;
   const liveDistance = deviceData?.distance ?? 0;
   const liveActive = deviceData?.activeMinutes ?? 0;
   const motionPermission = deviceData?.motionPermission ?? 'prompt';
+  const liveActivity = deviceData?.activity ?? 'idle';
+  const trackingStatus = deviceData?.trackingStatus ?? 'active';
+  const meaningfulUpdates = deviceData?.meaningfulUpdates ?? 0;
+  const sampleSeconds = deviceData?.samplingIntervalSeconds ?? 60;
+  const movementThreshold = deviceData?.movementThresholdMeters ?? 20;
+  const motionSupported = deviceData?.supported?.motion ?? false;
+
+  const activityLabelMap = {
+    idle: 'Idle',
+    walking: 'Walking',
+    vehicle: 'Vehicle',
+  };
+
+  const trackingMessage =
+    trackingStatus === 'paused'
+      ? 'GPS tracking is paused while this dashboard tab is hidden to reduce battery drain.'
+      : trackingStatus === 'permission-denied'
+        ? 'Location access is blocked, so GPS-based movement analytics are currently paused.'
+        : `GPS samples every ${sampleSeconds} seconds, uses cached fixes when possible, and saves only meaningful movement.`;
 
   useEffect(() => {
     if (onXPData) {
@@ -85,9 +107,20 @@ function HeroCard({ onXPData, deviceData, onRequestMotionAccess }) {
           <StatChip label="Live Steps" value={liveSteps.toLocaleString()} />
           <StatChip label="Distance" value={`${liveDistance.toFixed(2)} km`} />
           <StatChip label="Active" value={`${liveActive} min`} />
+          <StatChip label="Activity" value={activityLabelMap[liveActivity]} />
         </div>
 
-        {motionPermission !== 'granted' ? (
+        <p style={{ color: 'rgba(255,255,255,.78)', marginTop: 12, maxWidth: 560, fontSize: 13 }}>
+          {trackingMessage}
+        </p>
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap', color: 'rgba(255,255,255,.72)', fontSize: 12 }}>
+          <span>Sample: {sampleSeconds}s</span>
+          <span>Threshold: {movementThreshold} m</span>
+          <span>Saved updates: {meaningfulUpdates}</span>
+        </div>
+
+        {motionSupported && motionPermission !== 'granted' ? (
           <button
             type="button"
             className="mini-btn"
@@ -101,7 +134,7 @@ function HeroCard({ onXPData, deviceData, onRequestMotionAccess }) {
 
       <div style={{ position: 'relative', zIndex: 1 }}>
         <div className="card-white" style={{ padding: 16, background: 'rgba(255,255,255,.08)', borderColor: 'rgba(255,255,255,.2)' }}>
-          <CarbonGauge score={liveScore || 0.01} />
+          <CarbonGauge score={liveScore} />
           <div style={{ marginTop: 8, color: '#fff' }}>
             <div style={{ fontSize: 12, opacity: 0.8 }}>Today's XP</div>
             <div style={{ fontSize: 26, fontWeight: 800 }}>{stats.totalXP}</div>
