@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { TODOS_INIT } from '../../data/mockData.js';
 import CarbonGauge from './CarbonGauge.jsx';
+import DashboardMascot from './DashboardMascot.jsx';
 import LeafSVG from '../shared/LeafSVG.jsx';
 import StatChip from '../shared/StatChip.jsx';
 import ProgressBar from '../shared/ProgressBar.jsx';
@@ -15,11 +16,13 @@ function HeroCard({ onXPData, deviceData, onRequestMotionAccess }) {
 
   const liveScore = Math.max(
     0,
-    Math.min(0.99, (deviceData?.carbon ?? 0) + (deviceData?.chargingCarbonKg ?? 0))
+    Math.min(0.99, deviceData?.carbon ?? 0)
   );
   const liveSteps = deviceData?.steps ?? 0;
   const liveDistance = deviceData?.distance ?? 0;
   const liveActive = deviceData?.activeMinutes ?? 0;
+  const liveCadence = deviceData?.cadence ?? 0;
+  const liveConfidence = deviceData?.averageStepConfidence ?? 0;
   const motionPermission = deviceData?.motionPermission ?? 'prompt';
   const liveActivity = deviceData?.activity ?? 'idle';
   const trackingStatus = deviceData?.trackingStatus ?? 'active';
@@ -31,6 +34,7 @@ function HeroCard({ onXPData, deviceData, onRequestMotionAccess }) {
   const activityLabelMap = {
     idle: 'Idle',
     walking: 'Walking',
+    running: 'Running',
     vehicle: 'Vehicle',
   };
 
@@ -39,7 +43,7 @@ function HeroCard({ onXPData, deviceData, onRequestMotionAccess }) {
       ? 'GPS tracking is paused while this dashboard tab is hidden to reduce battery drain.'
       : trackingStatus === 'permission-denied'
         ? 'Location access is blocked, so GPS-based movement analytics are currently paused.'
-        : `GPS samples every ${sampleSeconds} seconds, uses cached fixes when possible, and saves only meaningful movement.`;
+        : `Adaptive thresholds and local-peak detection screen out random hand motion, while GPS checks keep confidence grounded every ${sampleSeconds} seconds.`;
 
   useEffect(() => {
     if (onXPData) {
@@ -60,25 +64,10 @@ function HeroCard({ onXPData, deviceData, onRequestMotionAccess }) {
 
   return (
     <section
-      className="card-dark pulse-glow"
-      style={{
-        position: 'relative',
-        overflow: 'hidden',
-        padding: 24,
-        display: 'grid',
-        gridTemplateColumns: '1.6fr 1fr',
-        gap: 20,
-      }}
+      className="card-dark pulse-glow hero-card hero-card--mascot"
     >
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background:
-            'radial-gradient(120% 90% at 12% 4%, rgba(110,231,183,.3), rgba(34,197,94,.06) 45%, transparent 75%)',
-          pointerEvents: 'none',
-        }}
-      />
+      <DashboardMascot />
+      <div className="hero-card__glow" />
 
       {particles.map((particle, i) => (
         <span
@@ -96,35 +85,39 @@ function HeroCard({ onXPData, deviceData, onRequestMotionAccess }) {
         </span>
       ))}
 
-      <div style={{ position: 'relative', zIndex: 1 }}>
-        <div style={{ color: '#a7f3d0', fontSize: 13, textTransform: 'uppercase', letterSpacing: 1.4 }}>Today Overview</div>
-        <h2 style={{ color: '#fff', fontSize: 34, marginTop: 6 }}>Your Carbon Pulse</h2>
-        <p style={{ color: 'rgba(255,255,255,.82)', maxWidth: 520, marginTop: 8 }}>
+      <div className="hero-card__content">
+        <div className="hero-card__eyebrow">Today Overview</div>
+        <h2 className="hero-card__title">Your Carbon Pulse</h2>
+        <p className="hero-card__intro">
           Keep your footprint low and your quest momentum high by stacking small, consistent eco actions.
         </p>
 
-        <div style={{ display: 'flex', gap: 10, marginTop: 18, flexWrap: 'wrap' }}>
+        <div className="hero-card__stats">
           <StatChip label="Live Steps" value={liveSteps.toLocaleString()} />
           <StatChip label="Distance" value={`${liveDistance.toFixed(2)} km`} />
           <StatChip label="Active" value={`${liveActive} min`} />
           <StatChip label="Activity" value={activityLabelMap[liveActivity]} />
+          <StatChip label="Cadence" value={`${Math.round(liveCadence)} spm`} />
+          <StatChip label="Confidence" value={`${Math.round(liveConfidence * 100)}%`} />
         </div>
 
-        <p style={{ color: 'rgba(255,255,255,.78)', marginTop: 12, maxWidth: 560, fontSize: 13 }}>
+        <p className="hero-card__message">
           {trackingMessage}
         </p>
 
-        <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap', color: 'rgba(255,255,255,.72)', fontSize: 12 }}>
-          <span>Sample: {sampleSeconds}s</span>
-          <span>Threshold: {movementThreshold} m</span>
-          <span>Saved updates: {meaningfulUpdates}</span>
+        <div className="hero-card__meta">
+          <span className="hero-card__meta-item">Sample: {sampleSeconds}s</span>
+          <span className="hero-card__meta-item">Threshold: {movementThreshold} m</span>
+          <span className="hero-card__meta-item">Saved updates: {meaningfulUpdates}</span>
+          <span className="hero-card__meta-item">GPS: {deviceData?.gpsDistance?.toFixed(2) ?? '0.00'} km</span>
+          <span className="hero-card__meta-item">Pedometer: {deviceData?.estimatedDistance?.toFixed(2) ?? '0.00'} km</span>
         </div>
 
         {motionSupported && motionPermission !== 'granted' ? (
           <button
             type="button"
             className="mini-btn"
-            style={{ marginTop: 12, background: 'rgba(255,255,255,.14)', color: '#fff', borderColor: 'rgba(255,255,255,.35)' }}
+            style={{ marginTop: 14, background: 'rgba(255,255,255,.14)', color: '#fff', borderColor: 'rgba(255,255,255,.35)' }}
             onClick={onRequestMotionAccess}
           >
             Activate Pedometer
@@ -132,13 +125,13 @@ function HeroCard({ onXPData, deviceData, onRequestMotionAccess }) {
         ) : null}
       </div>
 
-      <div style={{ position: 'relative', zIndex: 1 }}>
-        <div className="card-white" style={{ padding: 16, background: 'rgba(255,255,255,.08)', borderColor: 'rgba(255,255,255,.2)' }}>
+      <div className="hero-card__side">
+        <div className="hero-card__gauge-card">
           <CarbonGauge score={liveScore} />
-          <div style={{ marginTop: 8, color: '#fff' }}>
-            <div style={{ fontSize: 12, opacity: 0.8 }}>Today's XP</div>
-            <div style={{ fontSize: 26, fontWeight: 800 }}>{stats.totalXP}</div>
-            <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 8 }}>Level {stats.level}</div>
+          <div className="hero-card__xp">
+            <div className="hero-card__xp-label">Today's XP</div>
+            <div className="hero-card__xp-value">{stats.totalXP}</div>
+            <div className="hero-card__xp-level">Level {stats.level}</div>
             <ProgressBar
               value={stats.levelPct}
               color="linear-gradient(90deg, var(--gold), var(--gold-lt))"

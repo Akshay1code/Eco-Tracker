@@ -8,7 +8,9 @@ function AuthLayout({ mode = 'login', headline, subtext, children }) {
         <AuthLeftPanel mode={mode} headline={headline} subtext={subtext} />
       </aside>
       <section className="auth-right">
-        {children}
+        <div className="auth-right-inner">
+          {children}
+        </div>
       </section>
     </div>
   );

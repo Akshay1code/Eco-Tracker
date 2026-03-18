@@ -32,15 +32,12 @@ async function postTrigger(pathname, payload) {
     return null;
   }
 }
-
 export function sendActivityTrigger(payload) {
   return postTrigger('/api/triggers/activity', payload);
 }
-
 export function sendTimeTrigger(payload) {
   return postTrigger('/api/triggers/time', payload);
 }
-
 export function sendBatteryTrigger(payload) {
   return postTrigger('/api/triggers/battery', payload);
 }

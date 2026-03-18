@@ -180,6 +180,8 @@ export function applyActivityTrigger(record, payload) {
     timestamp,
     distance_moved: round(distanceMeters, 2),
     activity: payload.activityType || 'walking',
+    cadence_spm: payload.cadenceSpm ? round(Number(payload.cadenceSpm), 1) : 0,
+    confidence: payload.confidence ? round(Number(payload.confidence), 3) : 0,
   });
 
   return {

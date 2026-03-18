@@ -6,7 +6,6 @@ function StatChip({ label, value }) {
         borderRadius: 14,
         background: 'rgba(255,255,255,.08)',
         border: '1px solid rgba(255,255,255,.16)',
-        minWidth: 95,
       }}
     >
       <div style={{ fontSize: 11, color: 'rgba(255,255,255,.76)', marginBottom: 2 }}>{label}</div>

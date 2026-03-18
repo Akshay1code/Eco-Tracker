@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { sendActivityTrigger, sendBatteryTrigger, sendTimeTrigger } from '../lib/trackingApi.js';
+import {
+  createRealtimePedometer,
+  type DebugSignalPoint,
+  type PedometerActivity,
+  type StepLogEntry,
+} from '../lib/pedometer.ts';
 
 type MotionPermission = 'prompt' | 'granted' | 'denied' | 'unsupported';
-type ActivityKind = 'idle' | 'walking' | 'vehicle';
+type ActivityKind = PedometerActivity | 'vehicle';
 type TrackingStatus = 'active' | 'paused' | 'permission-denied' | 'unsupported';
 
 interface BatteryManagerLike extends EventTarget {
@@ -19,6 +25,8 @@ export interface DeviceCarbonData {
   carbon: number;
   batteryUsed: number;
   distance: number;
+  gpsDistance: number;
+  estimatedDistance: number;
   speed: number;
   steps: number;
   activeMinutes: number;
@@ -32,6 +40,13 @@ export interface DeviceCarbonData {
   lastMovementDistance: number;
   samplingIntervalSeconds: number;
   movementThresholdMeters: number;
+  cadence: number;
+  caloriesBurned: number;
+  co2SavedKg: number;
+  lastStepConfidence: number;
+  averageStepConfidence: number;
+  debugSignals: DebugSignalPoint[];
+  recentSteps: StepLogEntry[];
   charging: boolean;
   chargingTimeMinutes: number;
   chargingEnergyKwh: number;
@@ -48,28 +63,31 @@ const EARTH_RADIUS_KM = 6371;
 const GPS_SAMPLE_INTERVAL_MS = 60_000;
 const GPS_CACHE_MAX_AGE_MS = 60_000;
 const GPS_TIMEOUT_MS = 10_000;
-const GPS_MOVEMENT_THRESHOLD_METERS = 50;
+const GPS_MOVEMENT_THRESHOLD_METERS = 20;
 const GPS_MAX_ACCEPTABLE_ACCURACY_METERS = 100;
-const GPS_STEP_VALIDATION_DISTANCE_METERS = 50;
-const GPS_STEP_SPEED_LIMIT_MPS = 3;
-const GRAVITY_METERS_PER_SECOND_SQUARED = 9.81;
-const G_UNIT_MAX_MAGNITUDE = 3.5;
-const MIN_WALKING_TOTAL_ACCELERATION_G = 1.2;
-const MAX_WALKING_TOTAL_ACCELERATION_G = 1.45;
-const NORMAL_WALKING_CADENCE_MIN_HZ = 1.4;
-const NORMAL_WALKING_CADENCE_MAX_HZ = 2.3;
-const STEP_LENGTH_METERS = 0.78;
-const MIN_STEP_INTERVAL_MS = Math.round(1000 / NORMAL_WALKING_CADENCE_MAX_HZ);
-const MAX_STEP_INTERVAL_MS = Math.round(1000 / NORMAL_WALKING_CADENCE_MIN_HZ);
-const PATTERN_SPIKE_COUNT = 3;
-const MAX_PATTERN_GAP_MS = 2_000;
-const CARBON_SAVED_PER_KM_WALKED = 0.0002;
+const WALKING_SPEED_MIN_MPS = 0.55;
+const RUNNING_SPEED_MIN_MPS = 2.2;
+const VEHICLE_SPEED_MIN_MPS = 5.8;
+const RECENT_STEP_WINDOW_MS = 4_000;
+const STEP_LENGTH_WALKING_METERS = 0.76;
+const STEP_LENGTH_RUNNING_METERS = 1.02;
+const WALKING_CALORIES_PER_STEP = 0.042;
+const RUNNING_CALORIES_PER_STEP = 0.065;
+const CO2_SAVED_PER_KM_WALKED = 0.192;
 const TIME_TRIGGER_INTERVAL_MS = 15 * 60_000;
 const CHARGER_POWER_WATTS = 15;
 const GRID_EMISSION_FACTOR = 0.727;
 
 function toRad(value: number) {
   return (value * Math.PI) / 180;
+}
+
+function round(value: number, digits = 3) {
+  return Number(value.toFixed(digits));
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
 }
 
 function distanceKm(prev: GeoPoint, curr: GeoPoint) {
@@ -84,25 +102,42 @@ function distanceKm(prev: GeoPoint, curr: GeoPoint) {
   return 2 * EARTH_RADIUS_KM * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function classifyActivity(speedMps: number): ActivityKind {
-  if (speedMps > 3) {
+function deriveActivityFromSignals(
+  speedMps: number,
+  motionActivity: PedometerActivity,
+  cadenceSpm: number,
+  lastStepAt: number,
+  now: number
+): ActivityKind {
+  const hasRecentSteps = lastStepAt > 0 && now - lastStepAt <= RECENT_STEP_WINDOW_MS;
+
+  if (speedMps >= VEHICLE_SPEED_MIN_MPS && !hasRecentSteps) {
     return 'vehicle';
   }
-  return 'walking';
-}
 
-function normalizeAccelerationMagnitude(magnitude: number) {
-  if (magnitude > 0.1 && magnitude < G_UNIT_MAX_MAGNITUDE) {
-    return magnitude * GRAVITY_METERS_PER_SECOND_SQUARED;
+  if (hasRecentSteps && (motionActivity === 'running' || cadenceSpm >= 140 || speedMps >= RUNNING_SPEED_MIN_MPS)) {
+    return 'running';
   }
 
-  return magnitude;
+  if (hasRecentSteps && (motionActivity === 'walking' || cadenceSpm >= 60 || speedMps >= WALKING_SPEED_MIN_MPS)) {
+    return 'walking';
+  }
+
+  if (speedMps >= RUNNING_SPEED_MIN_MPS && hasRecentSteps) {
+    return 'running';
+  }
+
+  if (speedMps >= WALKING_SPEED_MIN_MPS && speedMps < VEHICLE_SPEED_MIN_MPS) {
+    return 'walking';
+  }
+
+  return 'idle';
 }
 
 export default function useDeviceCarbonTracker(userEmail: string | null): DeviceCarbonData {
-  const [carbon, setCarbon] = useState(0);
   const [batteryUsed, setBatteryUsed] = useState(0);
-  const [distance, setDistance] = useState(0);
+  const [gpsDistance, setGpsDistance] = useState(0);
+  const [estimatedDistance, setEstimatedDistance] = useState(0);
   const [speed, setSpeed] = useState(0);
   const [steps, setSteps] = useState(0);
   const [activeMinutes, setActiveMinutes] = useState(0);
@@ -114,24 +149,39 @@ export default function useDeviceCarbonTracker(userEmail: string | null): Device
   const [trackingStatus, setTrackingStatus] = useState<TrackingStatus>('active');
   const [meaningfulUpdates, setMeaningfulUpdates] = useState(0);
   const [lastMovementDistance, setLastMovementDistance] = useState(0);
+  const [cadence, setCadence] = useState(0);
+  const [caloriesBurned, setCaloriesBurned] = useState(0);
+  const [co2SavedKg, setCo2SavedKg] = useState(0);
+  const [lastStepConfidence, setLastStepConfidence] = useState(0);
+  const [averageStepConfidence, setAverageStepConfidence] = useState(0);
+  const [debugSignals, setDebugSignals] = useState<DebugSignalPoint[]>([]);
+  const [recentSteps, setRecentSteps] = useState<StepLogEntry[]>([]);
   const [charging, setCharging] = useState(false);
   const [chargingTimeMinutes, setChargingTimeMinutes] = useState(0);
   const [chargingEnergyKwh, setChargingEnergyKwh] = useState(0);
   const [chargingCarbonKg, setChargingCarbonKg] = useState(0);
   const [batteryAlert, setBatteryAlert] = useState<TrackerAlert | null>(null);
 
+  const pedometerRef = useRef(createRealtimePedometer());
   const prevLocationRef = useRef<{ point: GeoPoint; at: number } | null>(null);
-  const gpsValidationRef = useRef<{ point: GeoPoint; at: number } | null>(null);
-  const lastCandidateSpikeTsRef = useRef(0);
-  const consecutiveSpikeCountRef = useRef(0);
-  const pendingMotionStepsRef = useRef(0);
-  const movementCarryMetersRef = useRef(0);
-  const lastMovementTsRef = useRef(0);
   const sampleTimerRef = useRef<number | null>(null);
   const motionPermissionRef = useRef<MotionPermission>('prompt');
   const permissionDeniedRef = useRef(false);
   const chargingStateRef = useRef<boolean | null>(null);
   const chargingStartedAtRef = useRef<number | null>(null);
+  const movementCarryMetersRef = useRef(0);
+  const lastMovementTsRef = useRef(0);
+  const lastDebugSyncAtRef = useRef(0);
+  const gpsDistanceRef = useRef(0);
+  const estimatedDistanceRef = useRef(0);
+  const stepsRef = useRef(0);
+  const cadenceRef = useRef(0);
+  const caloriesRef = useRef(0);
+  const co2SavedRef = useRef(0);
+  const lastStepConfidenceRef = useRef(0);
+  const averageStepConfidenceRef = useRef(0);
+  const lastReportedStepsRef = useRef(0);
+  const lastReportedDistanceKmRef = useRef(0);
 
   const supported = useMemo(
     () => ({
@@ -142,14 +192,87 @@ export default function useDeviceCarbonTracker(userEmail: string | null): Device
     []
   );
 
+  const carbon = useMemo(
+    () => round(Math.max(chargingCarbonKg - co2SavedKg, 0), 4),
+    [chargingCarbonKg, co2SavedKg]
+  );
+
+  const distance = useMemo(
+    () => round(Math.max(gpsDistance, estimatedDistance), 3),
+    [gpsDistance, estimatedDistance]
+  );
+
   const markMovement = useCallback(() => {
     lastMovementTsRef.current = Date.now();
   }, []);
 
-  const resetMotionStepValidation = useCallback(() => {
-    lastCandidateSpikeTsRef.current = 0;
-    consecutiveSpikeCountRef.current = 0;
-    pendingMotionStepsRef.current = 0;
+  const syncDebugSnapshot = useCallback((force = false) => {
+    const now = Date.now();
+    if (!force && now - lastDebugSyncAtRef.current < 1_500) {
+      return;
+    }
+
+    const snapshot = pedometerRef.current.getSnapshot();
+    setDebugSignals(snapshot.debugSignals.slice(-90));
+    setRecentSteps(snapshot.recentSteps);
+    lastDebugSyncAtRef.current = now;
+  }, []);
+
+  const syncPedometerSnapshot = useCallback((forceDebug = false) => {
+    const snapshot = pedometerRef.current.getSnapshot();
+    const nextEstimatedDistance = round(snapshot.distanceMeters / 1000, 3);
+
+    estimatedDistanceRef.current = nextEstimatedDistance;
+    stepsRef.current = snapshot.steps;
+    cadenceRef.current = snapshot.cadenceSpm;
+    caloriesRef.current = snapshot.caloriesBurned;
+    co2SavedRef.current = snapshot.co2SavedKg;
+
+    setEstimatedDistance(nextEstimatedDistance);
+    setSteps(snapshot.steps);
+    setCadence(snapshot.cadenceSpm);
+    setCaloriesBurned(snapshot.caloriesBurned);
+    setCo2SavedKg(snapshot.co2SavedKg);
+    setLastStepConfidence(snapshot.lastStepConfidence);
+    setAverageStepConfidence(snapshot.averageConfidence);
+    lastStepConfidenceRef.current = snapshot.lastStepConfidence;
+    averageStepConfidenceRef.current = snapshot.averageConfidence;
+    syncDebugSnapshot(forceDebug);
+    return snapshot;
+  }, [syncDebugSnapshot]);
+
+  const applyGpsFallbackSteps = useCallback((distanceMetersDelta: number, activityKind: 'walking' | 'running', speedMps: number) => {
+    const stepLengthMeters = activityKind === 'running' ? STEP_LENGTH_RUNNING_METERS : STEP_LENGTH_WALKING_METERS;
+    movementCarryMetersRef.current += distanceMetersDelta;
+    const stepsDelta = Math.floor(movementCarryMetersRef.current / stepLengthMeters);
+
+    if (stepsDelta <= 0) {
+      return 0;
+    }
+
+    movementCarryMetersRef.current -= stepsDelta * stepLengthMeters;
+    const distanceDeltaKm = (stepsDelta * stepLengthMeters) / 1000;
+    const cadenceEstimate = clamp((speedMps / stepLengthMeters) * 60, activityKind === 'running' ? 130 : 60, activityKind === 'running' ? 190 : 135);
+    const caloriesDelta = stepsDelta * (activityKind === 'running' ? RUNNING_CALORIES_PER_STEP : WALKING_CALORIES_PER_STEP);
+    const co2Delta = distanceDeltaKm * CO2_SAVED_PER_KM_WALKED;
+
+    stepsRef.current += stepsDelta;
+    estimatedDistanceRef.current = round(estimatedDistanceRef.current + distanceDeltaKm, 3);
+    cadenceRef.current = round(cadenceEstimate, 1);
+    caloriesRef.current = round(caloriesRef.current + caloriesDelta, 2);
+    co2SavedRef.current = round(co2SavedRef.current + co2Delta, 4);
+
+    setSteps(stepsRef.current);
+    setEstimatedDistance(estimatedDistanceRef.current);
+    setCadence(cadenceRef.current);
+    setCaloriesBurned(caloriesRef.current);
+    setCo2SavedKg(co2SavedRef.current);
+    setLastStepConfidence(0.52);
+    setAverageStepConfidence((prev) => round((prev + 0.52) / 2, 3));
+    lastStepConfidenceRef.current = 0.52;
+    averageStepConfidenceRef.current = round((averageStepConfidenceRef.current + 0.52) / 2, 3);
+
+    return stepsDelta;
   }, []);
 
   useEffect(() => {
@@ -240,47 +363,50 @@ export default function useDeviceCarbonTracker(userEmail: string | null): Device
       const acc = event.accelerationIncludingGravity;
       if (!acc) return;
 
-      const x = acc.x ?? 0;
-      const y = acc.y ?? 0;
-      const z = acc.z ?? 0;
-      const magnitude = normalizeAccelerationMagnitude(Math.sqrt(x * x + y * y + z * z));
-      const totalAccelerationG = magnitude / GRAVITY_METERS_PER_SECOND_SQUARED;
-      const now = Date.now();
-      const sinceLastSpike = now - lastCandidateSpikeTsRef.current;
+      const result = pedometerRef.current.processSample({
+        x: acc.x ?? 0,
+        y: acc.y ?? 0,
+        z: acc.z ?? 0,
+        timestamp: Date.now(),
+        intervalMs: typeof event.interval === 'number' ? event.interval : null,
+      });
 
-      if (
-        totalAccelerationG < MIN_WALKING_TOTAL_ACCELERATION_G ||
-        totalAccelerationG > MAX_WALKING_TOTAL_ACCELERATION_G
-      ) {
+      if (result.step) {
+        const snapshot = syncPedometerSnapshot(true);
+        setActivity(result.step.activity);
+        if (snapshot.cadenceSpm > 0) {
+          setCadence(snapshot.cadenceSpm);
+        }
+        markMovement();
         return;
       }
 
-      if (sinceLastSpike > 0 && sinceLastSpike < MIN_STEP_INTERVAL_MS) {
-        return;
-      }
-
-      if (sinceLastSpike > MAX_PATTERN_GAP_MS || sinceLastSpike > MAX_STEP_INTERVAL_MS) {
-        consecutiveSpikeCountRef.current = 0;
-      }
-
-      lastCandidateSpikeTsRef.current = now;
-      consecutiveSpikeCountRef.current += 1;
-
-      if (consecutiveSpikeCountRef.current < PATTERN_SPIKE_COUNT) {
-        return;
-      }
-
-      const stepDelta = consecutiveSpikeCountRef.current === PATTERN_SPIKE_COUNT ? PATTERN_SPIKE_COUNT : 1;
-      pendingMotionStepsRef.current += stepDelta;
+      syncDebugSnapshot(false);
     };
 
     window.addEventListener('devicemotion', onMotion);
     return () => window.removeEventListener('devicemotion', onMotion);
-  }, [supported.motion]);
+  }, [markMovement, supported.motion, syncDebugSnapshot, syncPedometerSnapshot]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const interval = window.setInterval(() => {
+      const snapshot = syncPedometerSnapshot(false);
+      setActivity((prev) => {
+        if (prev === 'vehicle' && Date.now() - lastMovementTsRef.current <= GPS_SAMPLE_INTERVAL_MS) {
+          return prev;
+        }
+        return snapshot.activity;
+      });
+    }, 2_000);
+
+    return () => window.clearInterval(interval);
+  }, [syncPedometerSnapshot]);
 
   useEffect(() => {
     if (!supported.geolocation || typeof navigator === 'undefined' || typeof window === 'undefined') {
-      setTrackingStatus('unsupported');
+      setTrackingStatus(supported.motion ? 'active' : 'unsupported');
       return;
     }
 
@@ -306,7 +432,7 @@ export default function useDeviceCarbonTracker(userEmail: string | null): Device
 
       if (typeof document !== 'undefined' && document.hidden) {
         setTrackingStatus('paused');
-        setActivity('idle');
+        setActivity(pedometerRef.current.getSnapshot().activity);
         setSpeed(0);
         clearSampleTimer();
         return;
@@ -323,124 +449,98 @@ export default function useDeviceCarbonTracker(userEmail: string | null): Device
           const accuracy = pos.coords.accuracy ?? Number.POSITIVE_INFINITY;
           const point = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
           const now = Date.now();
+          const motionSnapshot = syncPedometerSnapshot(false);
+          const reportedSpeed = pos.coords.speed;
 
           if (!Number.isFinite(accuracy) || accuracy > GPS_MAX_ACCEPTABLE_ACCURACY_METERS) {
-            setActivity('idle');
+            pedometerRef.current.updateGpsContext({ speedMps: null, accuracyMeters: accuracy, timestamp: now });
+            setLocation(point);
+            setActivity(motionSnapshot.activity);
             setSpeed(0);
             scheduleNextSample();
             return;
           }
 
           const prev = prevLocationRef.current;
-          const validationPrev = gpsValidationRef.current;
-          gpsValidationRef.current = { point, at: now };
-
-          if (!validationPrev) {
-            prevLocationRef.current = prev ?? { point, at: now };
-            setLocation(point);
-            setActivity('idle');
-            setSpeed(0);
-            scheduleNextSample();
-            return;
-          }
-
-          const validationMovedKm = distanceKm(validationPrev.point, point);
-          const validationMovedMeters = validationMovedKm * 1000;
-          const validationElapsedSeconds = Math.max((now - validationPrev.at) / 1000, 1);
-          const validationFallbackSpeedMps = validationMovedMeters / validationElapsedSeconds;
-          const reportedSpeed = pos.coords.speed;
-          const speedMps =
-            typeof reportedSpeed === 'number' && Number.isFinite(reportedSpeed) && reportedSpeed >= 0
-              ? reportedSpeed
-              : validationFallbackSpeedMps;
-          const stepValidationPassed =
-            validationMovedMeters >= GPS_STEP_VALIDATION_DISTANCE_METERS && speedMps <= GPS_STEP_SPEED_LIMIT_MPS;
-          let committedMotionSteps = 0;
-
-          if (pendingMotionStepsRef.current > 0) {
-            if (stepValidationPassed) {
-              committedMotionSteps = pendingMotionStepsRef.current;
-              pendingMotionStepsRef.current = 0;
-              setSteps((prevSteps) => prevSteps + committedMotionSteps);
-              markMovement();
-            } else if (
-              validationMovedMeters < GPS_STEP_VALIDATION_DISTANCE_METERS ||
-              speedMps > GPS_STEP_SPEED_LIMIT_MPS
-            ) {
-              resetMotionStepValidation();
-            }
-          }
 
           if (!prev) {
             prevLocationRef.current = { point, at: now };
             setLocation(point);
-            setActivity('idle');
-            setSpeed(speedMps * 3.6);
+            setActivity(motionSnapshot.activity);
+            setSpeed(0);
             scheduleNextSample();
             return;
           }
 
           const movedKm = distanceKm(prev.point, point);
           const movedMeters = movedKm * 1000;
-          if (movedMeters <= GPS_MOVEMENT_THRESHOLD_METERS) {
-            setActivity(stepValidationPassed ? 'walking' : speedMps > GPS_STEP_SPEED_LIMIT_MPS ? 'vehicle' : 'idle');
-            setSpeed(stepValidationPassed ? speedMps * 3.6 : 0);
-            if (stepValidationPassed || committedMotionSteps > 0) {
+          const elapsedSeconds = Math.max((now - prev.at) / 1000, 1);
+          const fallbackSpeedMps = movedMeters / elapsedSeconds;
+          const speedMps =
+            typeof reportedSpeed === 'number' && Number.isFinite(reportedSpeed) && reportedSpeed >= 0
+              ? reportedSpeed
+              : fallbackSpeedMps;
+
+          pedometerRef.current.updateGpsContext({
+            speedMps,
+            accuracyMeters: accuracy,
+            timestamp: now,
+          });
+
+          const nextActivity = deriveActivityFromSignals(
+            speedMps,
+            motionSnapshot.activity,
+            motionSnapshot.cadenceSpm,
+            motionSnapshot.lastStepAt,
+            now
+          );
+
+          prevLocationRef.current = { point, at: now };
+          setLocation(point);
+          setSpeed(round(speedMps * 3.6, 2));
+          setActivity(nextActivity);
+
+          if (movedMeters < GPS_MOVEMENT_THRESHOLD_METERS) {
+            if (motionSnapshot.activity !== 'idle') {
               markMovement();
             }
             scheduleNextSample();
             return;
           }
 
-          const elapsedSeconds = Math.max((now - prev.at) / 1000, 1);
-          const fallbackSpeedMps = movedMeters / elapsedSeconds;
-          const storageSpeedMps =
-            typeof reportedSpeed === 'number' && Number.isFinite(reportedSpeed) && reportedSpeed >= 0
-              ? reportedSpeed
-              : fallbackSpeedMps;
-          const nextActivity = classifyActivity(storageSpeedMps);
-          const estimatedSteps =
-            nextActivity === 'walking' ? Math.max(1, Math.floor(movedMeters / STEP_LENGTH_METERS)) : 0;
-          const activeMinutesDelta = Math.max(1, Math.round(elapsedSeconds / 60));
-
-          prevLocationRef.current = { point, at: now };
-          setLocation(point);
-          setDistance((prevDist) => prevDist + movedKm);
-          setSpeed(storageSpeedMps * 3.6);
-          setActivity(nextActivity);
-          setLastMovementDistance(Number(movedMeters.toFixed(1)));
+          gpsDistanceRef.current = round(gpsDistanceRef.current + movedKm, 3);
+          setGpsDistance(gpsDistanceRef.current);
+          setLastMovementDistance(round(movedMeters, 1));
           setMeaningfulUpdates((prevCount) => prevCount + 1);
           markMovement();
 
-          if (nextActivity === 'walking') {
-            setCarbon((prevCarbon) => prevCarbon + movedKm * CARBON_SAVED_PER_KM_WALKED);
-
-            if (!supported.motion || motionPermissionRef.current !== 'granted') {
-              movementCarryMetersRef.current += movedMeters;
-              const fallbackSteps = Math.floor(movementCarryMetersRef.current / STEP_LENGTH_METERS);
-              if (fallbackSteps > 0) {
-                setSteps((prevSteps) => prevSteps + fallbackSteps);
-                movementCarryMetersRef.current -= fallbackSteps * STEP_LENGTH_METERS;
-              }
-            } else if (committedMotionSteps === 0 || storageSpeedMps > GPS_STEP_SPEED_LIMIT_MPS) {
-              resetMotionStepValidation();
-            }
+          let fallbackSteps = 0;
+          if ((!supported.motion || motionPermissionRef.current !== 'granted') && (nextActivity === 'walking' || nextActivity === 'running')) {
+            fallbackSteps = applyGpsFallbackSteps(movedMeters, nextActivity, speedMps);
           }
 
-          const stepsDeltaToReport =
-            committedMotionSteps > 0
-              ? committedMotionSteps
-              : nextActivity === 'walking' && (!supported.motion || motionPermissionRef.current !== 'granted')
-                ? Math.max(1, Math.floor(movedMeters / STEP_LENGTH_METERS))
-                : 0;
+          const fusedDistanceKm = Math.max(gpsDistanceRef.current, estimatedDistanceRef.current);
+          const distanceDeltaMeters = Math.max(0, (fusedDistanceKm - lastReportedDistanceKmRef.current) * 1000);
+          const stepsDeltaToReport = Math.max(0, stepsRef.current - lastReportedStepsRef.current);
+          const activeMinutesDelta = Math.max(1, Math.round(elapsedSeconds / 60));
+          const shouldReportActivity =
+            distanceDeltaMeters >= GPS_MOVEMENT_THRESHOLD_METERS ||
+            stepsDeltaToReport >= Math.ceil(GPS_MOVEMENT_THRESHOLD_METERS / STEP_LENGTH_WALKING_METERS) ||
+            fallbackSteps > 0;
 
-          if (userEmail) {
+          if (userEmail && shouldReportActivity) {
+            lastReportedDistanceKmRef.current = fusedDistanceKm;
+            lastReportedStepsRef.current = stepsRef.current;
+
             void sendActivityTrigger({
               userId: userEmail,
-              distanceMeters: Number(movedMeters.toFixed(2)),
+              distanceMeters: round(distanceDeltaMeters, 2),
               stepsDelta: stepsDeltaToReport,
               activeMinutes: activeMinutesDelta,
               activityType: nextActivity,
+              cadenceSpm: round(cadenceRef.current, 1),
+              confidence: round(lastStepConfidenceRef.current, 3),
+              avgConfidence: round(averageStepConfidenceRef.current, 3),
               timestamp: new Date(now).toISOString(),
             });
           }
@@ -459,7 +559,7 @@ export default function useDeviceCarbonTracker(userEmail: string | null): Device
             return;
           }
 
-          setActivity('idle');
+          setActivity(pedometerRef.current.getSnapshot().activity);
           setSpeed(0);
           scheduleNextSample();
         },
@@ -475,7 +575,7 @@ export default function useDeviceCarbonTracker(userEmail: string | null): Device
       if (document.hidden) {
         clearSampleTimer();
         setTrackingStatus('paused');
-        setActivity('idle');
+        setActivity(pedometerRef.current.getSnapshot().activity);
         setSpeed(0);
         return;
       }
@@ -501,7 +601,14 @@ export default function useDeviceCarbonTracker(userEmail: string | null): Device
       clearSampleTimer();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [markMovement, resetMotionStepValidation, supported.geolocation, supported.motion, userEmail]);
+  }, [
+    applyGpsFallbackSteps,
+    markMovement,
+    supported.geolocation,
+    supported.motion,
+    syncPedometerSnapshot,
+    userEmail,
+  ]);
 
   useEffect(() => {
     if (!supported.battery || typeof navigator === 'undefined') return;
@@ -520,7 +627,7 @@ export default function useDeviceCarbonTracker(userEmail: string | null): Device
         userId: userEmail,
         charging: batteryManager.charging,
         batteryLevel: Number((batteryManager.level * 100).toFixed(2)),
-        chargerPowerWatts: 15,
+        chargerPowerWatts: CHARGER_POWER_WATTS,
         timestamp: new Date().toISOString(),
       });
     };
@@ -599,6 +706,8 @@ export default function useDeviceCarbonTracker(userEmail: string | null): Device
     carbon,
     batteryUsed,
     distance,
+    gpsDistance,
+    estimatedDistance,
     speed,
     steps,
     activeMinutes,
@@ -612,6 +721,13 @@ export default function useDeviceCarbonTracker(userEmail: string | null): Device
     lastMovementDistance,
     samplingIntervalSeconds: GPS_SAMPLE_INTERVAL_MS / 1000,
     movementThresholdMeters: GPS_MOVEMENT_THRESHOLD_METERS,
+    cadence,
+    caloriesBurned,
+    co2SavedKg,
+    lastStepConfidence,
+    averageStepConfidence,
+    debugSignals,
+    recentSteps,
     charging,
     chargingTimeMinutes,
     chargingEnergyKwh,

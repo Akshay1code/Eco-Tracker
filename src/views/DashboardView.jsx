@@ -14,8 +14,8 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
   const topFive = LEADERBOARD.slice(0, 5);
   const storedEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
   const tracker = useDeviceCarbonTracker(storedEmail);
-  const chargeEnergyProgress = Math.min((tracker.chargingEnergyKwh / 0.05) * 100, 100);
-  const chargeCarbonProgress = Math.min((tracker.chargingCarbonKg / 0.05) * 100, 100);
+  const chargeCarbonProgress = Math.min((tracker.co2SavedKg / 1.5) * 100, 100);
+  const caloriesProgress = Math.min((tracker.caloriesBurned / 400) * 100, 100);
 
   const liveMetrics = METRICS.map((metric) => {
     if (metric.label === 'Steps Walked') {
@@ -41,8 +41,8 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
     if (metric.label === 'Carbon Saved') {
       return {
         ...metric,
-        label: 'Charge CO2',
-        value: tracker.chargingCarbonKg.toFixed(4),
+        label: 'Carbon Saved',
+        value: tracker.co2SavedKg.toFixed(3),
         unit: 'kg CO2',
         progress: chargeCarbonProgress,
       };
@@ -50,14 +50,14 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
     if (metric.label === 'Device Energy') {
       return {
         ...metric,
-        label: 'Charge Energy',
-        value: tracker.chargingEnergyKwh.toFixed(4),
-        unit: 'kWh',
-        progress: chargeEnergyProgress,
+        label: 'Calories Burned',
+        value: tracker.caloriesBurned.toFixed(0),
+        unit: 'kcal',
+        progress: caloriesProgress,
       };
     }
     if (metric.label === 'Eco Score') {
-      const score = Math.max(0, Math.min(100, 100 - (tracker.carbon + tracker.chargingCarbonKg) * 100));
+      const score = Math.max(0, Math.min(100, 100 - tracker.carbon * 100));
       return { ...metric, value: `${Math.round(score)}`, unit: '/ 100', progress: score };
     }
     return metric;
@@ -68,7 +68,7 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
       <TopBar activeTab={activeTab} onLogout={onLogout} />
       <HeroCard deviceData={tracker} onRequestMotionAccess={tracker.requestMotionAccess} />
 
-      <SectionHeader title="Carbon Activity Metrics" subtitle="Battery-optimized GPS sampling keeps movement, steps, and carbon signals current without constant location polling." />
+      <SectionHeader title="Carbon Activity Metrics" subtitle="Adaptive step detection blends accelerometer peaks, cadence rhythm, and GPS-aware validation for steadier real-time tracking." />
       <MetricsGrid metrics={liveMetrics} />
 
       <div className="two-col" style={{ marginTop: 20 }}>

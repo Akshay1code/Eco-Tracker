@@ -9,7 +9,6 @@ import GoalsView from './views/GoalsView.jsx';
 import SettingsView from './views/SettingsView.jsx';
 import CalModal from './components/modals/CalModal.jsx';
 import ProfileModal from './components/modals/ProfileModal.jsx';
-import GameIntro from './components/GameIntro.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import SignupPage from './pages/SignupPage.jsx';
 
@@ -42,7 +41,12 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [calModal, setCalModal] = useState(null);
   const [profileModal, setProfileModal] = useState(null);
-  const [screen, setScreen] = useState('app');
+  const [screen, setScreen] = useState(() => {
+    if (typeof window === 'undefined') {
+      return 'login';
+    }
+    return localStorage.getItem('isLoggedIn') === 'true' ? 'app' : 'login';
+  });
   
   const handleLogout = () => {
     localStorage.removeItem('isLoggedIn');
@@ -56,7 +60,7 @@ function App() {
         localStorage.removeItem(key);
       }
     });
-    setScreen('intro');
+    setScreen('login');
   };
 
   const viewProps = {
@@ -81,21 +85,6 @@ function App() {
   );
 
   const ActiveView = viewMap[activeTab] || DashboardView;
-
-  if (screen === 'intro') {
-    return (
-      <GameIntro
-        onComplete={() => setScreen('login')}
-        onNavigate={(path) => {
-          if (path === '/login') {
-            setScreen('login');
-            return;
-          }
-          setScreen('app');
-        }}
-      />
-    );
-  }
 
   if (screen === 'login') {
     return (
