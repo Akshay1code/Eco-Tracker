@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import AuthLayout from '../components/auth/AuthLayout.jsx';
+import { loginUser as loginUserRequest } from '../lib/authApi.js';
 
 function GoogleLogo() {
   return (
@@ -90,7 +91,7 @@ function LoginPage({ onSwitchToSignup, onNavigate }) {
     setLeafPulse(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const nextErrors = {
@@ -102,29 +103,26 @@ function LoginPage({ onSwitchToSignup, onNavigate }) {
 
     if (nextErrors.username || nextErrors.password) return;
 
-    const storedEmail = localStorage.getItem('userEmail');
-    const storedName = localStorage.getItem('userName');
-    const storedPassword = localStorage.getItem('userPassword');
-
-    if (!storedEmail || !storedPassword) {
-      setFormError('No account found. Please create an account first.');
-      return;
-    }
-
-    const normalizedInput = form.username.trim().toLowerCase();
-    const emailMatch = normalizedInput === storedEmail.trim().toLowerCase();
-    const nameMatch = storedName ? normalizedInput === storedName.trim().toLowerCase() : false;
-
-    if ((!emailMatch && !nameMatch) || form.password !== storedPassword) {
-      setFormError('Invalid credentials. Please try again.');
-      return;
-    }
-
     setIsSubmitting(true);
-    window.setTimeout(() => {
+    setFormError('');
+
+    try {
+      const response = await loginUserRequest({
+        identifier: form.username,
+        password: form.password,
+      });
+
       localStorage.setItem('isLoggedIn', 'true');
+      localStorage.setItem('userEmail', response.user.email);
+      localStorage.setItem('userName', response.user.name);
+      localStorage.setItem('userScore', String(response.user.score ?? 200));
+      localStorage.setItem('userProfile', JSON.stringify(response.profile));
+      localStorage.removeItem('userPassword');
       goTo('/dashboard');
-    }, 900);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Unable to sign in right now.');
+      setIsSubmitting(false);
+    }
   };
 
   return (

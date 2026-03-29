@@ -7,6 +7,9 @@ export const ACTIVE_DEVICE_POWER_W = 8;
 export const INDIA_GRID_EMISSION_FACTOR = 0.727;
 export const CARBON_BASELINE_KG = 0.05;
 export const BASE_XP = 100;
+export const WELCOME_XP = 200;
+export const XP_PER_LEVEL = 200;
+export const BADGE_LEVEL_INTERVAL = 10;
 export const BATTERY_DRAIN_REMINDER_THRESHOLD = 6;
 
 export const DAILY_GOALS = {

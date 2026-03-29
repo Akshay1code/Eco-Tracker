@@ -21,6 +21,13 @@ interface TrackerAlert {
   message: string;
 }
 
+interface PersistedDailyRecord {
+  date?: string;
+  steps?: number;
+  active_time?: number;
+  activity_distance?: number;
+}
+
 export interface DeviceCarbonData {
   carbon: number;
   batteryUsed: number;
@@ -134,7 +141,10 @@ function deriveActivityFromSignals(
   return 'idle';
 }
 
-export default function useDeviceCarbonTracker(userEmail: string | null): DeviceCarbonData {
+export default function useDeviceCarbonTracker(
+  userEmail: string | null,
+  initialRecord: PersistedDailyRecord | null = null
+): DeviceCarbonData {
   const [batteryUsed, setBatteryUsed] = useState(0);
   const [gpsDistance, setGpsDistance] = useState(0);
   const [estimatedDistance, setEstimatedDistance] = useState(0);
@@ -161,6 +171,12 @@ export default function useDeviceCarbonTracker(userEmail: string | null): Device
   const [chargingEnergyKwh, setChargingEnergyKwh] = useState(0);
   const [chargingCarbonKg, setChargingCarbonKg] = useState(0);
   const [batteryAlert, setBatteryAlert] = useState<TrackerAlert | null>(null);
+  const [persistedBaseline, setPersistedBaseline] = useState({
+    date: '',
+    steps: 0,
+    activeMinutes: 0,
+    distanceKm: 0,
+  });
 
   const pedometerRef = useRef(createRealtimePedometer());
   const prevLocationRef = useRef<{ point: GeoPoint; at: number } | null>(null);
@@ -182,6 +198,7 @@ export default function useDeviceCarbonTracker(userEmail: string | null): Device
   const averageStepConfidenceRef = useRef(0);
   const lastReportedStepsRef = useRef(0);
   const lastReportedDistanceKmRef = useRef(0);
+  const baselineDateRef = useRef('');
 
   const supported = useMemo(
     () => ({
@@ -197,10 +214,34 @@ export default function useDeviceCarbonTracker(userEmail: string | null): Device
     [chargingCarbonKg, co2SavedKg]
   );
 
-  const distance = useMemo(
+  const sessionDistance = useMemo(
     () => round(Math.max(gpsDistance, estimatedDistance), 3),
     [gpsDistance, estimatedDistance]
   );
+
+  const totalSteps = useMemo(() => persistedBaseline.steps + steps, [persistedBaseline.steps, steps]);
+  const totalActiveMinutes = useMemo(
+    () => persistedBaseline.activeMinutes + activeMinutes,
+    [activeMinutes, persistedBaseline.activeMinutes]
+  );
+  const distance = useMemo(
+    () => round(persistedBaseline.distanceKm + sessionDistance, 3),
+    [persistedBaseline.distanceKm, sessionDistance]
+  );
+
+  useEffect(() => {
+    if (!initialRecord?.date || baselineDateRef.current === initialRecord.date) {
+      return;
+    }
+
+    baselineDateRef.current = initialRecord.date;
+    setPersistedBaseline({
+      date: initialRecord.date,
+      steps: Math.max(0, Number(initialRecord.steps || 0)),
+      activeMinutes: Math.max(0, Math.round(Number(initialRecord.active_time || 0))),
+      distanceKm: Math.max(0, Number(initialRecord.activity_distance || 0)),
+    });
+  }, [initialRecord]);
 
   const markMovement = useCallback(() => {
     lastMovementTsRef.current = Date.now();
@@ -709,8 +750,8 @@ export default function useDeviceCarbonTracker(userEmail: string | null): Device
     gpsDistance,
     estimatedDistance,
     speed,
-    steps,
-    activeMinutes,
+    steps: totalSteps,
+    activeMinutes: totalActiveMinutes,
     location,
     screenTime,
     permissionDenied,

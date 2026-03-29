@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Poppins:wght@400;500;600;700&display=swap');
+
 .auth-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(380px, 0.85fr);
@@ -1022,6 +1024,104 @@
 .earth-character--proud .earth-leg--right {
   right: 18%;
   transform: rotate(-4deg);
+}
+
+.auth-earth-mascot--static {
+  cursor: default;
+}
+
+.eco-signup-mascot-shell {
+  animation: earthSignupSwapIn 0.5s cubic-bezier(0.22, 0.88, 0.32, 1);
+}
+
+.auth-earth-mascot--signup-flow {
+  width: min(100%, 500px);
+  margin-top: 18px;
+}
+
+.auth-earth-mascot--signup-flow .earth-character {
+  width: clamp(280px, 34vw, 460px);
+}
+
+.auth-earth-mascot--signup-flow .earth-speech-cloud {
+  top: 4%;
+  left: 2%;
+  max-width: min(300px, 58%);
+  font-family: 'Nunito', sans-serif;
+}
+
+.auth-earth-mascot--signup-flow .earth-speech-cloud--signup {
+  font-size: 0.95rem;
+}
+
+.auth-earth-mascot--signup-flow .earth-arm--left,
+.auth-earth-mascot--signup-flow .earth-arm--right {
+  animation: none;
+}
+
+.auth-earth-mascot--signup-flow.auth-earth-mascot--action-wave .earth-arm--left {
+  transform: rotate(26deg);
+}
+
+.auth-earth-mascot--signup-flow.auth-earth-mascot--action-wave .earth-arm--right {
+  top: 40%;
+  right: 8%;
+  height: 28%;
+  transform: rotate(-14deg);
+  animation: earthSignupWaveRight 1.25s ease-in-out infinite;
+}
+
+.auth-earth-mascot--signup-flow.auth-earth-mascot--action-think .earth-character-stage {
+  animation: earthThinkFloat 2.8s ease-in-out infinite;
+}
+
+.auth-earth-mascot--signup-flow.auth-earth-mascot--action-think .earth-globe {
+  animation: earthSignupThinkTilt 2.3s ease-in-out infinite;
+}
+
+.auth-earth-mascot--signup-flow.auth-earth-mascot--action-bounce .earth-character-stage {
+  animation: earthSignupBounce 1.2s ease-in-out infinite;
+}
+
+.auth-earth-mascot--signup-flow.auth-earth-mascot--action-spin .earth-globe {
+  animation: earthSignupSpin 6.4s linear infinite;
+}
+
+.auth-earth-mascot--signup-flow.auth-earth-mascot--action-cheer .earth-character-stage {
+  animation: earthSignupCheerBounce 1.4s ease-in-out infinite;
+}
+
+.auth-earth-mascot--signup-flow.auth-earth-mascot--action-cheer .earth-arm--left {
+  top: 37%;
+  left: 5%;
+  width: 12%;
+  height: 26%;
+  transform: rotate(74deg);
+}
+
+.auth-earth-mascot--signup-flow.auth-earth-mascot--action-cheer .earth-arm--right {
+  top: 37%;
+  right: 5%;
+  width: 12%;
+  height: 26%;
+  transform: rotate(-74deg);
+}
+
+.auth-earth-mascot--signup-flow.auth-earth-mascot--action-nod .earth-character {
+  animation: earthSignupNod 2.1s ease-in-out infinite;
+}
+
+.auth-earth-mascot--signup-flow.auth-earth-mascot--action-jump .earth-character-stage {
+  animation: earthSignupJump 1.15s cubic-bezier(0.22, 0.88, 0.32, 1) infinite;
+}
+
+.auth-earth-mascot--signup-flow.auth-earth-mascot--action-jump .earth-shadow {
+  animation: earthSignupJumpShadow 1.15s cubic-bezier(0.22, 0.88, 0.32, 1) infinite;
+}
+
+.auth-earth-mascot--signup-flow.auth-earth-mascot--action-jump .earth-spark {
+  opacity: 1;
+  animation: earthSparkle 1.1s ease-in-out infinite;
 }
 
 .auth-logo-block {
@@ -2384,6 +2484,154 @@
   }
 }
 
+@keyframes earthSignupSwapIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes earthSignupWaveRight {
+  0%,
+  100% {
+    transform: rotate(-14deg);
+  }
+  25% {
+    transform: rotate(-42deg);
+  }
+  50% {
+    transform: rotate(-6deg);
+  }
+  75% {
+    transform: rotate(-36deg);
+  }
+}
+
+@keyframes earthThinkFloat {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -8px, 0);
+  }
+}
+
+@keyframes earthSignupThinkTilt {
+  0%,
+  100% {
+    transform: translateX(-50%) rotate(0deg);
+  }
+  25% {
+    transform: translateX(-50%) rotate(-5deg);
+  }
+  75% {
+    transform: translateX(-50%) rotate(5deg);
+  }
+}
+
+@keyframes earthSignupBounce {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  35% {
+    transform: translate3d(0, -18px, 0);
+  }
+  55% {
+    transform: translate3d(0, 0, 0);
+  }
+  75% {
+    transform: translate3d(0, -8px, 0);
+  }
+}
+
+@keyframes earthSignupSpin {
+  from {
+    transform: translateX(-50%) rotate(0deg);
+  }
+  to {
+    transform: translateX(-50%) rotate(360deg);
+  }
+}
+
+@keyframes earthSignupCheerBounce {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -12px, 0);
+  }
+}
+
+@keyframes earthSignupNod {
+  0%,
+  100% {
+    transform:
+      perspective(1000px)
+      rotateX(calc(var(--earth-tilt-y) * -5deg))
+      rotateY(calc(var(--earth-tilt-x) * 8deg))
+      rotate(0deg);
+  }
+  30% {
+    transform:
+      perspective(1000px)
+      rotateX(calc(var(--earth-tilt-y) * -5deg))
+      rotateY(calc(var(--earth-tilt-x) * 8deg))
+      rotate(3deg)
+      translateY(4px);
+  }
+  60% {
+    transform:
+      perspective(1000px)
+      rotateX(calc(var(--earth-tilt-y) * -5deg))
+      rotateY(calc(var(--earth-tilt-x) * 8deg))
+      rotate(0deg);
+  }
+  80% {
+    transform:
+      perspective(1000px)
+      rotateX(calc(var(--earth-tilt-y) * -5deg))
+      rotateY(calc(var(--earth-tilt-x) * 8deg))
+      rotate(-2deg)
+      translateY(2px);
+  }
+}
+
+@keyframes earthSignupJump {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  32% {
+    transform: translate3d(0, -28px, 0);
+  }
+  58% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes earthSignupJumpShadow {
+  0%,
+  100% {
+    opacity: 0.42;
+    transform: translateY(20px) scaleX(1);
+  }
+  32% {
+    opacity: 0.18;
+    transform: translateY(24px) scaleX(0.78);
+  }
+  58% {
+    opacity: 0.36;
+    transform: translateY(22px) scaleX(1.04);
+  }
+}
+
 @media (max-width: 900px) {
   .auth-layout {
     height: auto;
@@ -2520,5 +2768,1081 @@
 
   .trust-dot {
     display: none;
+  }
+}
+
+.eco-signup-page {
+  display: grid;
+  grid-template-columns: minmax(340px, 0.45fr) minmax(0, 0.55fr);
+  min-height: 100dvh;
+  height: 100dvh;
+  background: #f8faf9;
+  overflow: hidden;
+}
+
+.eco-signup-page,
+.eco-signup-page input,
+.eco-signup-page button {
+  font-family: 'Poppins', sans-serif;
+}
+
+.eco-signup-left {
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+  background:
+    radial-gradient(circle at 24% 20%, rgba(34, 197, 94, 0.08), transparent 28%),
+    radial-gradient(circle at 82% 24%, rgba(167, 243, 208, 0.08), transparent 22%),
+    linear-gradient(160deg, #0a2e1e 0%, #0f3d2a 40%, #14532d 70%, #1a6335 100%);
+}
+
+.eco-signup-left-panel {
+  position: relative;
+  min-height: 100%;
+  padding: clamp(30px, 4vw, 42px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  isolation: isolate;
+}
+
+.eco-signup-left-glow {
+  position: absolute;
+  inset: auto auto -14% -8%;
+  width: 340px;
+  height: 340px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(110, 230, 162, 0.14), transparent 70%);
+  filter: blur(18px);
+  pointer-events: none;
+}
+
+.eco-signup-brand-lockup {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.eco-signup-brand-mark {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.9), rgba(20, 184, 166, 0.75));
+  box-shadow: 0 18px 36px rgba(16, 185, 129, 0.2);
+  backdrop-filter: blur(8px);
+}
+
+.eco-signup-brand-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.eco-signup-brand-name {
+  color: #ffffff;
+  font-family: 'Nunito', sans-serif;
+  font-size: clamp(1.8rem, 2vw, 2.4rem);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.eco-signup-brand-copy p {
+  max-width: 320px;
+  color: rgba(220, 252, 231, 0.78);
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
+.eco-signup-leaf-particle,
+.eco-signup-sparkle {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.eco-signup-leaf-particle {
+  opacity: 0.18;
+  transform: translate3d(0, 0, 0) rotate(var(--leaf-rotate));
+  animation: ecoSignupLeafRise var(--leaf-duration) linear infinite;
+  animation-delay: var(--leaf-delay);
+}
+
+.eco-signup-sparkle {
+  color: rgba(220, 252, 231, 0.34);
+  text-shadow: 0 0 14px rgba(167, 243, 208, 0.16);
+  animation: ecoSignupSparkle 3.8s ease-in-out infinite;
+}
+
+.terra-mascot-stage {
+  position: relative;
+  z-index: 2;
+  width: min(100%, 520px);
+  margin: 18px auto 0;
+  animation: ecoSignupMascotEnter 0.5s cubic-bezier(0.22, 0.88, 0.32, 1);
+}
+
+.terra-mascot-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.terra-bubble {
+  animation: ecoSignupBubbleFloat 4.4s ease-in-out infinite;
+}
+
+.terra-bubble-text {
+  fill: #11382b;
+  font-family: 'Nunito', sans-serif;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.terra-character,
+.terra-body,
+.terra-arm,
+.terra-leg,
+.terra-backpack,
+.terra-starburst {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.terra-character {
+  animation: ecoSignupFloat 5.6s ease-in-out infinite;
+}
+
+.terra-ground-shadow {
+  fill: rgba(1, 18, 13, 0.28);
+  filter: blur(8px);
+  animation: ecoSignupShadow 5.6s ease-in-out infinite;
+}
+
+.terra-eye {
+  fill: #111111;
+}
+
+.terra-eye-shine {
+  fill: #ffffff;
+}
+
+.terra-eye-shine--small {
+  opacity: 0.8;
+}
+
+.terra-cheek {
+  fill: rgba(255, 168, 193, 0.95);
+}
+
+.terra-continent {
+  filter: drop-shadow(0 2px 3px rgba(9, 98, 48, 0.16));
+}
+
+.terra-arm--left {
+  transform-origin: 70% 10%;
+}
+
+.terra-arm--right {
+  transform-origin: 18% 10%;
+}
+
+.terra-leg--left,
+.terra-leg--right {
+  transform-origin: 50% 0;
+}
+
+.terra-burst {
+  fill: #f0c419;
+  opacity: 0;
+}
+
+.terra-mascot--wave .terra-arm--right {
+  animation: ecoSignupWave 1.3s ease-in-out infinite;
+}
+
+.terra-mascot--think .terra-body {
+  animation: ecoSignupThink 2.4s ease-in-out infinite;
+}
+
+.terra-mascot--bounce .terra-character {
+  animation: ecoSignupBounce 1.1s ease-in-out infinite;
+}
+
+.terra-mascot--spin .terra-body {
+  animation: ecoSignupSpin 6s linear infinite;
+}
+
+.terra-mascot--cheer .terra-arm--left {
+  animation: ecoSignupCheerLeft 1.6s ease-in-out infinite;
+}
+
+.terra-mascot--cheer .terra-arm--right {
+  animation: ecoSignupCheerRight 1.6s ease-in-out infinite;
+}
+
+.terra-mascot--nod .terra-character {
+  animation: ecoSignupNod 2.1s ease-in-out infinite;
+}
+
+.terra-mascot--jump .terra-character {
+  animation: ecoSignupJump 1.15s cubic-bezier(0.22, 0.88, 0.32, 1) infinite;
+}
+
+.terra-mascot--jump .terra-ground-shadow {
+  animation: ecoSignupShadowJump 1.15s cubic-bezier(0.22, 0.88, 0.32, 1) infinite;
+}
+
+.terra-mascot--celebrate .terra-burst {
+  animation: ecoSignupBurst 1.15s ease-out infinite;
+}
+
+.terra-mascot--celebrate .terra-burst--two {
+  animation-delay: 0.12s;
+}
+
+.terra-mascot--celebrate .terra-burst--three {
+  animation-delay: 0.18s;
+}
+
+.terra-mascot--celebrate .terra-burst--four {
+  animation-delay: 0.26s;
+}
+
+.eco-signup-right {
+  background:
+    radial-gradient(circle at top left, rgba(183, 238, 201, 0.2), transparent 26%),
+    linear-gradient(180deg, #f8faf9 0%, #f4f8f4 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: clamp(28px, 4vw, 44px);
+  overflow: hidden;
+}
+
+.eco-signup-right-inner {
+  width: min(100%, 680px);
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 20px;
+}
+
+.eco-signup-progress-block {
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid rgba(214, 230, 208, 0.82);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.85);
+  backdrop-filter: blur(8px);
+}
+
+.eco-signup-progress-track {
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(45, 106, 79, 0.1);
+  overflow: hidden;
+}
+
+.eco-signup-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2d6a4f 0%, #52b788 100%);
+  box-shadow: 0 0 14px rgba(61, 139, 78, 0.18);
+  transition: width 0.3s ease;
+}
+
+.eco-signup-progress-copy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #496254;
+  font-size: 0.96rem;
+}
+
+.eco-signup-progress-copy span {
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+}
+
+.eco-signup-login-link {
+  border: none;
+  background: transparent;
+  color: #3d8b4e;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.eco-signup-login-link:hover {
+  text-decoration: underline;
+}
+
+.eco-signup-card {
+  position: relative;
+  min-height: 0;
+  height: 100%;
+  padding: clamp(24px, 4vw, 36px);
+  border: 1px solid rgba(214, 230, 208, 0.9);
+  border-radius: 32px;
+  background:
+    radial-gradient(circle at top right, rgba(198, 240, 180, 0.14), transparent 42%),
+    #fafff7;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.92),
+    0 22px 60px rgba(35, 67, 33, 0.08);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.eco-signup-card.is-scrollable {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.eco-signup-card.is-scrollable::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.eco-signup-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'%3E%3Cg fill='none' stroke='%232d6a4f' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M43 50c18 2 31 12 37 28 3 7 3 15 .5 23-8 2-16 2-23-.8-16-6-27-20-29-39 4-4 9-8 14.5-11.2Z'/%3E%3Cpath d='M52 78c6-8 14-15 24-21'/%3E%3Cpath d='M155 126c20 1 35 12 42 31 2 7 2 14-.5 22-8 3-16 3-24 .2-19-7-31-23-33-44 5-4 10-7 15.5-9.2Z'/%3E%3Cpath d='M166 159c7-10 16-19 27-26'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 220px 220px;
+  pointer-events: none;
+}
+
+.eco-signup-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.42), transparent 24%);
+  pointer-events: none;
+}
+
+.eco-signup-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.eco-signup-form-shell {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.eco-signup-stage {
+  position: relative;
+  flex: 1;
+  min-height: 360px;
+}
+
+.eco-signup-stage--credentials {
+  min-height: 560px;
+}
+
+.eco-signup-stage--done {
+  min-height: 400px;
+}
+
+.eco-signup-step-panel {
+  position: absolute;
+  inset: 0;
+}
+
+.eco-signup-stage.is-static .eco-signup-step-panel.is-incoming {
+  position: relative;
+  inset: auto;
+  min-height: 100%;
+}
+
+.eco-signup-step-panel.is-incoming {
+  animation-duration: 0.32s;
+  animation-fill-mode: both;
+  animation-timing-function: cubic-bezier(0.22, 0.88, 0.32, 1);
+}
+
+.eco-signup-step-panel.is-incoming.dir-forward {
+  animation-name: ecoSignupSlideInFromRight;
+}
+
+.eco-signup-step-panel.is-incoming.dir-back {
+  animation-name: ecoSignupSlideInFromLeft;
+}
+
+.eco-signup-step-panel.is-outgoing {
+  pointer-events: none;
+  animation-duration: 0.32s;
+  animation-fill-mode: both;
+  animation-timing-function: ease;
+}
+
+.eco-signup-step-panel.is-outgoing.dir-forward {
+  animation-name: ecoSignupSlideOutToLeft;
+}
+
+.eco-signup-step-panel.is-outgoing.dir-back {
+  animation-name: ecoSignupSlideOutToRight;
+}
+
+.eco-signup-step-inner {
+  display: flex;
+  height: 100%;
+}
+
+.eco-signup-step-shell {
+  width: min(100%, 560px);
+  margin: 0 auto;
+  display: grid;
+  gap: 22px;
+  align-content: start;
+}
+
+.eco-signup-step-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(194, 245, 212, 0.28);
+  color: #2d6a4f;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.eco-signup-step-header {
+  display: grid;
+  gap: 12px;
+}
+
+.eco-signup-step-header--compact {
+  gap: 14px;
+}
+
+.eco-signup-step-header h2,
+.eco-signup-success h2 {
+  color: #0f1a0f;
+  font-family: 'Nunito', sans-serif;
+  font-size: clamp(2rem, 4vw, 2.65rem);
+  font-weight: 900;
+  line-height: 1.05;
+}
+
+.eco-signup-step-header p,
+.eco-signup-success p {
+  color: #6b7c6b;
+  font-size: 1rem;
+  line-height: 1.72;
+  max-width: 48ch;
+}
+
+.eco-signup-form-panel {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid rgba(214, 230, 208, 0.78);
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.62));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.84);
+}
+
+.eco-signup-form-panel--rich {
+  gap: 20px;
+}
+
+.eco-signup-form-panel--success {
+  gap: 20px;
+}
+
+.eco-signup-field {
+  display: grid;
+  gap: 10px;
+}
+
+.eco-signup-field label {
+  color: #213125;
+  font-family: 'Nunito', sans-serif;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.eco-signup-input-wrap {
+  position: relative;
+}
+
+.eco-signup-input {
+  width: 100%;
+  min-height: 58px;
+  border: 1px solid #c8dfc4;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.84);
+  color: #17301a;
+  padding: 0 18px;
+  font-size: 1rem;
+  transition: border-color 0.22s ease, box-shadow 0.22s ease, background 0.22s ease, transform 0.22s ease;
+}
+
+.eco-signup-input::placeholder {
+  color: #7b8d79;
+}
+
+.eco-signup-input:focus {
+  outline: none;
+  border-color: #3d8b4e;
+  box-shadow: 0 0 0 4px rgba(61, 139, 78, 0.13);
+  background: #fff;
+}
+
+.eco-signup-input.is-error {
+  border-color: #d84d4d;
+  box-shadow: 0 0 0 4px rgba(216, 77, 77, 0.12);
+}
+
+.eco-signup-input--with-toggle {
+  padding-right: 62px;
+}
+
+.eco-signup-toggle {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(82, 183, 136, 0.12);
+  color: #3d8b4e;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.eco-signup-toggle:hover {
+  background: rgba(82, 183, 136, 0.18);
+  transform: translateY(-50%) scale(1.04);
+}
+
+.eco-signup-toggle-icon {
+  width: 19px;
+  height: 19px;
+}
+
+.eco-signup-error {
+  color: #c93d3d;
+  font-size: 0.86rem;
+}
+
+.eco-signup-error--form {
+  margin: 0 auto 0 0;
+}
+
+.eco-signup-credentials {
+  display: grid;
+  gap: 16px;
+}
+
+.eco-signup-social-stack {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 4px;
+}
+
+.eco-signup-social-btn {
+  min-height: 56px;
+  border-color: #d6e6d0;
+  box-shadow: 0 10px 22px rgba(50, 94, 55, 0.06);
+}
+
+.eco-signup-social-btn:hover {
+  box-shadow: 0 14px 26px rgba(50, 94, 55, 0.09);
+}
+
+.eco-signup-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.eco-signup-divider::before,
+.eco-signup-divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid #d4e8d0;
+}
+
+.eco-signup-divider span {
+  color: #91a18e;
+  font-size: 0.92rem;
+  white-space: nowrap;
+}
+
+.eco-signup-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.eco-signup-back,
+.eco-signup-next {
+  min-height: 56px;
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.eco-signup-back {
+  min-width: 118px;
+  border: 1px solid #d6e6d0;
+  background: transparent;
+  color: #3d8b4e;
+}
+
+.eco-signup-back:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 10px 20px rgba(50, 94, 55, 0.06);
+}
+
+.eco-signup-next {
+  padding: 0 28px;
+  border: none;
+  background: linear-gradient(135deg, #2d6a4f, #52b788);
+  color: #ffffff;
+  box-shadow: 0 12px 30px rgba(61, 139, 78, 0.2);
+}
+
+.eco-signup-next:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 34px rgba(61, 139, 78, 0.24);
+}
+
+.eco-signup-back:disabled,
+.eco-signup-next:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.eco-signup-xp-badge {
+  padding: 11px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(61, 139, 78, 0.16);
+  background: linear-gradient(135deg, rgba(194, 245, 212, 0.32), rgba(82, 183, 136, 0.1));
+  color: #166534;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.eco-signup-footer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: auto;
+  padding-top: 18px;
+  border-top: 1px solid rgba(214, 230, 208, 0.9);
+  background: rgba(250, 255, 247, 0.92);
+}
+
+.eco-signup-success {
+  display: grid;
+  gap: 16px;
+}
+
+.eco-signup-success-badge {
+  justify-self: start;
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: rgba(194, 245, 212, 0.34);
+  color: #166534;
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.eco-signup-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.eco-signup-summary-chip {
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid #dbe8d8;
+  display: grid;
+  gap: 8px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.72);
+}
+
+.eco-signup-summary-chip span {
+  color: #7a8e7c;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.eco-signup-summary-chip strong {
+  color: #213125;
+  font-family: 'Nunito', sans-serif;
+  font-size: 1.1rem;
+}
+
+@keyframes ecoSignupMascotEnter {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes ecoSignupLeafRise {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 32px, 0) rotate(var(--leaf-rotate));
+  }
+  20% {
+    opacity: 0.24;
+  }
+  60% {
+    transform: translate3d(12px, -110px, 0) rotate(calc(var(--leaf-rotate) + 14deg));
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-8px, -220px, 0) rotate(calc(var(--leaf-rotate) - 8deg));
+  }
+}
+
+@keyframes ecoSignupSparkle {
+  0%,
+  100% {
+    opacity: 0.16;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 0.44;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes ecoSignupBubbleFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes ecoSignupFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes ecoSignupShadow {
+  0%,
+  100% {
+    opacity: 0.34;
+    transform: scaleX(1);
+  }
+  50% {
+    opacity: 0.22;
+    transform: scaleX(0.92);
+  }
+}
+
+@keyframes ecoSignupWave {
+  0%,
+  100% {
+    transform: rotate(12deg);
+  }
+  25% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(20deg);
+  }
+  75% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes ecoSignupThink {
+  0%,
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+  25% {
+    transform: rotate(-5deg) translateY(-2px);
+  }
+  75% {
+    transform: rotate(5deg) translateY(-2px);
+  }
+}
+
+@keyframes ecoSignupBounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  35% {
+    transform: translateY(-16px);
+  }
+  55% {
+    transform: translateY(0);
+  }
+  75% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes ecoSignupSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ecoSignupCheerLeft {
+  0%,
+  100% {
+    transform: rotate(-40deg);
+  }
+  50% {
+    transform: rotate(-62deg);
+  }
+}
+
+@keyframes ecoSignupCheerRight {
+  0%,
+  100% {
+    transform: rotate(38deg);
+  }
+  50% {
+    transform: rotate(62deg);
+  }
+}
+
+@keyframes ecoSignupNod {
+  0%,
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+  25% {
+    transform: rotate(3deg) translateY(4px);
+  }
+  50% {
+    transform: rotate(0deg) translateY(0);
+  }
+  75% {
+    transform: rotate(-2deg) translateY(2px);
+  }
+}
+
+@keyframes ecoSignupJump {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  32% {
+    transform: translateY(-28px) scale(1.02);
+  }
+  60% {
+    transform: translateY(0) scale(0.99);
+  }
+}
+
+@keyframes ecoSignupShadowJump {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: scaleX(1);
+  }
+  32% {
+    opacity: 0.14;
+    transform: scaleX(0.78);
+  }
+  60% {
+    opacity: 0.26;
+    transform: scaleX(1.02);
+  }
+}
+
+@keyframes ecoSignupBurst {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.2) translateY(-8px);
+  }
+}
+
+@keyframes ecoSignupSlideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(36px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes ecoSignupSlideOutToLeft {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-36px);
+  }
+}
+
+@keyframes ecoSignupSlideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-36px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes ecoSignupSlideOutToRight {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(36px);
+  }
+}
+
+@media (max-width: 1024px) {
+  .eco-signup-page {
+    grid-template-columns: 1fr;
+    height: auto;
+    overflow: visible;
+  }
+
+  .eco-signup-left {
+    min-height: auto;
+  }
+
+  .eco-signup-left-panel {
+    padding-bottom: 10px;
+  }
+
+  .terra-mascot-stage {
+    width: min(100%, 420px);
+  }
+
+  .eco-signup-right {
+    padding-top: 10px;
+    align-items: flex-start;
+    overflow: visible;
+  }
+
+  .eco-signup-right-inner {
+    height: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .eco-signup-left-panel {
+    padding: 24px 18px 8px;
+  }
+
+  .eco-signup-brand-lockup {
+    align-items: flex-start;
+  }
+
+  .eco-signup-right {
+    padding: 18px 14px 24px;
+  }
+
+  .eco-signup-progress-copy {
+    flex-wrap: wrap;
+  }
+
+  .eco-signup-card {
+    min-height: 540px;
+    height: auto;
+    padding: 22px 18px;
+    border-radius: 28px;
+  }
+
+  .eco-signup-stage {
+    min-height: 390px;
+  }
+
+  .eco-signup-stage--credentials {
+    min-height: 620px;
+  }
+
+  .eco-signup-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .eco-signup-footer-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .eco-signup-back,
+  .eco-signup-next {
+    width: 100%;
+  }
+
+  .eco-signup-summary-grid {
+    grid-template-columns: 1fr;
   }
 }

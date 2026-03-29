@@ -3,7 +3,18 @@ import ProgressBar from '../shared/ProgressBar.jsx';
 import { CAL_DETAIL } from '../../data/mockData.js';
 
 function CalModal({ day, onClose }) {
-  const detail = CAL_DETAIL[day] || { score: 0.0, steps: 0, dist: 0, energy: '0%', active: 0, perf: 0 };
+  const selectedDay = typeof day === 'object' && day !== null ? day.day : day;
+  const record = typeof day === 'object' && day !== null ? day.record : null;
+  const detail = record
+    ? {
+        score: Number(record.carbon_emission || 0),
+        steps: Number(record.steps || 0),
+        dist: Number(record.activity_distance || 0),
+        energy: `${Number(record.energy_used || 0).toFixed(3)} kWh`,
+        active: Math.round(Number(record.active_time || 0)),
+        perf: Math.max(0, Math.min(100, Number(record.eco_score || 0))),
+      }
+    : CAL_DETAIL[selectedDay] || { score: 0.0, steps: 0, dist: 0, energy: '0%', active: 0, perf: 0 };
 
   let plant = '\uD83C\uDF31';
   if (detail.perf >= 85) plant = '\uD83C\uDF33';
@@ -12,7 +23,7 @@ function CalModal({ day, onClose }) {
   return (
     <Modal onClose={onClose} maxWidth={470}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ color: 'var(--forest)', fontSize: 26 }}>Day {day} Snapshot</h3>
+        <h3 style={{ color: 'var(--forest)', fontSize: 26 }}>Day {selectedDay} Snapshot</h3>
         <button type="button" className="mini-btn" onClick={onClose}>Close</button>
       </div>
 

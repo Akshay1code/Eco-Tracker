@@ -22,6 +22,14 @@ body {
   width: 100%;
   min-height: 100vh;
 }
+
+@media (min-width: 1025px) {
+  html.signup-page-active,
+  body.signup-page-active {
+    overflow: hidden;
+  }
+}
+
 @keyframes sky-pulse {
   0%,100% { opacity: 1 }
   50% { opacity: .95 }

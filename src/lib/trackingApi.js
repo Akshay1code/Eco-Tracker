@@ -1,4 +1,4 @@
-const TRACKING_API_BASE_URL = import.meta.env.VITE_TRACKING_API_URL || 'http://localhost:3001';
+import { API_BASE_URL } from './apiBase.js';
 
 function normalizeUserId(userId) {
   return typeof userId === 'string' && userId.trim() ? userId.trim().toLowerCase() : null;
@@ -11,7 +11,7 @@ async function postTrigger(pathname, payload) {
   }
 
   try {
-    const response = await fetch(`${TRACKING_API_BASE_URL}${pathname}`, {
+    const response = await fetch(`${API_BASE_URL}${pathname}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -40,4 +40,26 @@ export function sendTimeTrigger(payload) {
 }
 export function sendBatteryTrigger(payload) {
   return postTrigger('/api/triggers/battery', payload);
+}
+
+export async function fetchDailyActivityRecords(userId) {
+  const normalizedUserId = normalizeUserId(userId);
+  if (!normalizedUserId) {
+    return { records: [] };
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/daily?userId=${encodeURIComponent(normalizedUserId)}`);
+
+  let data = {};
+  try {
+    data = await response.json();
+  } catch {
+    data = {};
+  }
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Unable to load activity records right now.');
+  }
+
+  return data;
 }

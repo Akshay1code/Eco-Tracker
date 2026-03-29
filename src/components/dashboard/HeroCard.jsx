@@ -8,11 +8,12 @@ import ProgressBar from '../shared/ProgressBar.jsx';
 
 function HeroCard({ onXPData, deviceData, onRequestMotionAccess }) {
   const stats = useMemo(() => {
-    const totalXP = TODOS_INIT.filter((todo) => todo.done).reduce((sum, todo) => sum + todo.xp, 0);
-    const level = Math.floor(totalXP / 200) + 1;
-    const levelPct = ((totalXP % 200) / 200) * 100;
+    const fallbackXP = TODOS_INIT.filter((todo) => todo.done).reduce((sum, todo) => sum + todo.xp, 0);
+    const totalXP = Number(deviceData?.totalXp ?? fallbackXP);
+    const level = Number(deviceData?.level ?? Math.floor(totalXP / 200) + 1);
+    const levelPct = Number(deviceData?.levelProgressPct ?? ((totalXP % 200) / 200) * 100);
     return { totalXP, level, levelPct };
-  }, []);
+  }, [deviceData?.level, deviceData?.levelProgressPct, deviceData?.totalXp]);
 
   const liveScore = Math.max(
     0,
@@ -30,6 +31,7 @@ function HeroCard({ onXPData, deviceData, onRequestMotionAccess }) {
   const sampleSeconds = deviceData?.samplingIntervalSeconds ?? 60;
   const movementThreshold = deviceData?.movementThresholdMeters ?? 20;
   const motionSupported = deviceData?.supported?.motion ?? false;
+  const badges = Array.isArray(deviceData?.badges) ? deviceData.badges : [];
 
   const activityLabelMap = {
     idle: 'Idle',
@@ -137,6 +139,15 @@ function HeroCard({ onXPData, deviceData, onRequestMotionAccess }) {
               color="linear-gradient(90deg, var(--gold), var(--gold-lt))"
               height={9}
             />
+            {badges.length ? (
+              <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+                {badges.slice(-3).map((badge) => (
+                  <span key={badge.key || badge.label} className="pill" style={{ background: 'rgba(255,255,255,.12)', color: '#fff' }}>
+                    {badge.label}
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

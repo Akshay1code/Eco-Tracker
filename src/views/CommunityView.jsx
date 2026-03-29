@@ -3,22 +3,27 @@ import TopBar from '../components/layout/TopBar.jsx';
 import SectionHeader from '../components/shared/SectionHeader.jsx';
 import PodiumCard from '../components/community/PodiumCard.jsx';
 import LeaderboardRow from '../components/community/LeaderboardRow.jsx';
-import { LEADERBOARD } from '../data/mockData.js';
+import useLeaderboard from '../hooks/useLeaderboard.js';
 
 const FILTERS = ['This Week', 'This Month', 'All Time'];
 
 function CommunityView({ onUserClick, onLogout, activeTab = 'community' }) {
   const [filter, setFilter] = useState(FILTERS[0]);
+  const { users: leaderboardUsers, isLoading, error } = useLeaderboard(25);
 
   const users = useMemo(() => {
+    if (!leaderboardUsers.length) {
+      return [];
+    }
+
     if (filter === 'All Time') {
-      return [...LEADERBOARD].sort((a, b) => b.xp - a.xp);
+      return [...leaderboardUsers].sort((a, b) => b.xp - a.xp);
     }
     if (filter === 'This Month') {
-      return [...LEADERBOARD].sort((a, b) => a.score - b.score);
+      return [...leaderboardUsers].sort((a, b) => a.score - b.score || b.xp - a.xp);
     }
-    return LEADERBOARD;
-  }, [filter]);
+    return [...leaderboardUsers].sort((a, b) => a.score - b.score || b.xp - a.xp);
+  }, [filter, leaderboardUsers]);
 
   const podium = users.slice(0, 3);
 
@@ -47,11 +52,18 @@ function CommunityView({ onUserClick, onLogout, activeTab = 'community' }) {
       </div>
 
       <section className="card-white" style={{ padding: 16 }}>
-        <div style={{ display: 'grid', gap: 8 }}>
-          {users.map((user) => (
-            <LeaderboardRow key={`${filter}-${user.rank}-${user.name}`} user={user} onClick={onUserClick} />
-          ))}
-        </div>
+        {isLoading ? <p style={{ color: 'var(--gray-600)', margin: 0 }}>Loading community rankings...</p> : null}
+        {!isLoading && error ? <p style={{ color: '#b91c1c', margin: 0 }}>{error}</p> : null}
+        {!isLoading && !error && !users.length ? (
+          <p style={{ color: 'var(--gray-600)', margin: 0 }}>No community members are available yet.</p>
+        ) : null}
+        {!isLoading && !error && users.length ? (
+          <div style={{ display: 'grid', gap: 8 }}>
+            {users.map((user) => (
+              <LeaderboardRow key={`${filter}-${user.rank}-${user.id}`} user={user} onClick={onUserClick} />
+            ))}
+          </div>
+        ) : null}
       </section>
     </div>
   );

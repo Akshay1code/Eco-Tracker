@@ -35,6 +35,22 @@ function ProfileModal({ user, onClose }) {
         <div className="mini-stat"><span>Streak</span><strong>{user.streak} days</strong></div>
       </div>
 
+      {typeof user.level === 'number' ? (
+        <div style={{ marginTop: 12 }} className="card-white">
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
+            <strong style={{ color: 'var(--forest)' }}>Level {user.level}</strong>
+            <span style={{ color: 'var(--gray-600)', fontSize: 12 }}>{user.xp} XP</span>
+          </div>
+          {Array.isArray(user.badges) && user.badges.length ? (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+              {user.badges.slice(-3).map((badge) => (
+                <span key={badge.key || badge.label} className="pill">{badge.label}</span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       <div style={{ marginTop: 14 }}>
         <div style={{ fontWeight: 700, color: 'var(--forest)', marginBottom: 8 }}>7-Day Footprint</div>
         <div style={{ display: 'flex', alignItems: 'end', gap: 8, height: 100 }}>

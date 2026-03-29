@@ -11,7 +11,14 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
-function AuthEarthMascot({ mode = 'signup' }) {
+function AuthEarthMascot({
+  mode = 'signup',
+  speechMessage,
+  emotionId,
+  action,
+  interactive = mode === 'login',
+  className = '',
+}) {
   const mascotRef = useRef(null);
   const reactionTimeoutRef = useRef(null);
   const gazeResetTimeoutRef = useRef(null);
@@ -19,14 +26,20 @@ function AuthEarthMascot({ mode = 'signup' }) {
   const [emotionIndex, setEmotionIndex] = useState(mode === 'login' ? 0 : 3);
   const [isReacting, setIsReacting] = useState(false);
 
-  const emotion = EMOTIONS[emotionIndex];
-  const speechMessage = mode === 'signup'
-    ? "Yes, you are welcome to join our army. Let's go zero carbon emission."
-    : 'Welcome back, champion.';
+  const forcedEmotion = emotionId ? EMOTIONS.find((item) => item.id === emotionId) : null;
+  const emotion = forcedEmotion || EMOTIONS[emotionIndex];
+  const resolvedSpeechMessage = speechMessage || (
+    mode === 'signup'
+      ? "Yes, you are welcome to join our army. Let's go zero carbon emission."
+      : 'Welcome back, champion.'
+  );
 
   useEffect(() => {
+    if (forcedEmotion) {
+      return;
+    }
     setEmotionIndex(mode === 'login' ? 0 : 3);
-  }, [mode]);
+  }, [forcedEmotion, mode]);
 
   useEffect(() => () => {
     if (reactionTimeoutRef.current) {
@@ -145,6 +158,10 @@ function AuthEarthMascot({ mode = 'signup' }) {
   }, [mode]);
 
   const cycleEmotion = () => {
+    if (!interactive || forcedEmotion) {
+      return;
+    }
+
     setEmotionIndex((prev) => (prev + 1) % EMOTIONS.length);
     setIsReacting(true);
 
@@ -157,13 +174,27 @@ function AuthEarthMascot({ mode = 'signup' }) {
     }, 460);
   };
 
+  const mascotClassName = [
+    'auth-earth-mascot',
+    `auth-earth-mascot--${mode}`,
+    className,
+    action ? `auth-earth-mascot--action-${action}` : '',
+    interactive ? '' : 'auth-earth-mascot--static',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <div
       ref={mascotRef}
-      className={`auth-earth-mascot auth-earth-mascot--${mode}`}
-      role="button"
-      tabIndex={0}
-      aria-label={`EcoTracker earth mascot. Current mood: ${emotion.label}. Click to change mood.`}
+      className={mascotClassName}
+      role={interactive ? 'button' : 'img'}
+      tabIndex={interactive ? 0 : -1}
+      aria-label={
+        interactive
+          ? `EcoTracker earth mascot. Current mood: ${emotion.label}. Click to change mood.`
+          : `EcoTracker earth mascot. ${resolvedSpeechMessage}`
+      }
       onPointerMove={(e) => updatePose(e.clientX, e.clientY)}
       onPointerEnter={(e) => updatePose(e.clientX, e.clientY)}
       onPointerLeave={() => {
@@ -173,8 +204,11 @@ function AuthEarthMascot({ mode = 'signup' }) {
         }
         resetPose();
       }}
-      onClick={cycleEmotion}
+      onClick={interactive ? cycleEmotion : undefined}
       onKeyDown={(e) => {
+        if (!interactive) {
+          return;
+        }
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           cycleEmotion();
@@ -182,7 +216,7 @@ function AuthEarthMascot({ mode = 'signup' }) {
       }}
     >
       <div className={`earth-speech-cloud earth-speech-cloud--${mode}`}>
-        {speechMessage}
+        {resolvedSpeechMessage}
       </div>
 
       <div className="earth-shadow" />

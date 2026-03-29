@@ -3,9 +3,12 @@ import { TODOS_INIT } from '../../data/mockData.js';
 import { useXPSystem } from '../../hooks/useXPSystem.js';
 import ProgressBar from '../shared/ProgressBar.jsx';
 
-function EcoTodos() {
+function EcoTodos({ userProgress }) {
   const { todos, xpPops, totalXP, level, levelPct, toggleTodo, addTodo } = useXPSystem(TODOS_INIT);
   const [text, setText] = useState('');
+  const persistedLevel = userProgress?.level ?? level;
+  const persistedXp = userProgress?.score ?? totalXP;
+  const persistedLevelPct = userProgress?.levelProgressPct ?? levelPct;
 
   const onAdd = () => {
     addTodo(text, 25, '\uD83C\uDF3F');
@@ -16,12 +19,12 @@ function EcoTodos() {
     <section className="card-white eco-todos">
       <div className="todo-head">
         <h3 style={{ color: 'var(--forest)', fontSize: 20 }}>Eco Quests</h3>
-        <div className="todo-level">Level {level}</div>
+        <div className="todo-level">Level {persistedLevel}</div>
       </div>
 
       <div className="todo-progress">
-        <div className="todo-xp-text">{totalXP} XP collected</div>
-        <ProgressBar value={levelPct} color="linear-gradient(90deg, #22c55e, #6ee7b7)" height={8} />
+        <div className="todo-xp-text">{persistedXp} XP collected</div>
+        <ProgressBar value={persistedLevelPct} color="linear-gradient(90deg, #22c55e, #6ee7b7)" height={8} />
       </div>
 
       <div className="todo-list">

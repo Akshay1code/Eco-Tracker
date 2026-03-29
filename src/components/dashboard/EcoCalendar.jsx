@@ -1,8 +1,6 @@
-import { CAL_DATA } from '../../data/mockData.js';
-
 const DAY_HEADERS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
-function EcoCalendar({ onDayClick }) {
+function EcoCalendar({ onDayClick, activeDays = new Set(), recordsByDay = {} }) {
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
@@ -40,7 +38,7 @@ function EcoCalendar({ onDayClick }) {
             return <div key={idx} style={{ height: 36 }} />;
           }
 
-          const hasData = Boolean(CAL_DATA[day]);
+          const hasData = activeDays.has(day);
           const classes = ['cal-day'];
           if (hasData) classes.push('has-data');
           if (day === currentDay) classes.push('today');
@@ -50,7 +48,7 @@ function EcoCalendar({ onDayClick }) {
               key={idx}
               type="button"
               className={classes.join(' ')}
-              onClick={() => onDayClick?.(day)}
+              onClick={() => onDayClick?.({ day, record: recordsByDay[day] || null })}
               aria-label={`Day ${day}`}
             >
               {day}
