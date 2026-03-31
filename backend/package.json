@@ -1,0 +1,15 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "Eco Tracker backend",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --env-file=.env server.js",
+    "dev": "node --watch --env-file=.env server.js"
+  },
+  "type": "module",
+  "dependencies": {
+    "express": "^5.2.1",
+    "mongodb": "^7.1.1"
+  }
+}

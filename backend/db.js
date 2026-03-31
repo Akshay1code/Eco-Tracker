@@ -1,10 +1,12 @@
 import { MongoClient } from 'mongodb';
 
-const DEFAULT_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017';
-const LOCAL_FALLBACK_URI = 'mongodb://127.0.0.1:27017';
+function normalizeMongoUri(uri) {
+  return typeof uri === 'string' && uri.trim() ? uri.trim() : '';
+}
+
+const DEFAULT_URI = normalizeMongoUri(process.env.MONGODB_URI);
 const DATABASE_NAME = process.env.MONGODB_DB_NAME || 'ecotrackerdb';
 const SERVER_SELECTION_TIMEOUT_MS = Number(process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS || 5000);
-const ENABLE_LOCAL_FALLBACK = process.env.MONGODB_DISABLE_LOCAL_FALLBACK !== 'true';
 
 let clientPromise = null;
 let databaseInstance = null;
@@ -20,8 +22,15 @@ function enhanceConnectionError(uri, error) {
   }
 
   const originalMessage = error instanceof Error ? error.message : String(error);
+  const dnsHint =
+    originalMessage.includes('querySrv ETIMEOUT') || originalMessage.includes('querySrv ENOTFOUND')
+      ? '\n[eco-backend] Atlas DNS hint: your machine cannot resolve the Atlas SRV record. Try a different DNS server/network, disable VPN or filtering, or use the standard non-SRV Atlas connection string from the Atlas Connect > Drivers screen.'
+      : '';
+  const tlsHint = originalMessage.includes('tlsv1 alert internal error')
+    ? '\n[eco-backend] Atlas TLS hint: check Atlas Network Access, confirm the cluster is not paused, and try again from a different network/VPN-disabled connection if your current network inspects HTTPS traffic.'
+    : '';
   const enhanced = new Error(
-    `${originalMessage}\n[eco-backend] Atlas checklist: verify Network Access IP allowlist, database username/password, and cluster availability.`
+    `${originalMessage}\n[eco-backend] Atlas checklist: verify Network Access IP allowlist, database username/password, and cluster availability.${dnsHint}${tlsHint}`
   );
 
   if (error instanceof Error && error.stack) {
@@ -44,28 +53,34 @@ async function connectClient(uri) {
   return client;
 }
 
+function assertAtlasConfiguration(uri) {
+  if (!uri) {
+    throw new Error(
+      '[eco-backend] MONGODB_URI is required and must point to your MongoDB Atlas cluster.'
+    );
+  }
+
+  if (!isAtlasUri(uri)) {
+    throw new Error(
+      `[eco-backend] Refusing to start with a non-Atlas MongoDB URI: ${uri}\n[eco-backend] Set MONGODB_URI in backend/.env to your Atlas connection string.`
+    );
+  }
+}
+
 export async function connectToDatabase() {
   if (databaseInstance) {
     return databaseInstance;
   }
 
   if (!clientPromise) {
+    assertAtlasConfiguration(DEFAULT_URI);
     clientPromise = (async () => {
       try {
         const client = await connectClient(DEFAULT_URI);
         connectedUri = DEFAULT_URI;
         return client;
       } catch (primaryError) {
-        if (!ENABLE_LOCAL_FALLBACK || DEFAULT_URI === LOCAL_FALLBACK_URI) {
-          throw primaryError;
-        }
-
-        console.warn(
-          `[eco-backend] database connection failed for configured URI, falling back to local MongoDB at ${LOCAL_FALLBACK_URI}`
-        );
-        const client = await connectClient(LOCAL_FALLBACK_URI);
-        connectedUri = LOCAL_FALLBACK_URI;
-        return client;
+        throw primaryError;
       }
     })().catch((error) => {
       clientPromise = null;
