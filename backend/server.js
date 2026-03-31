@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import http from 'node:http';
+import cors from 'cors';
 import express from 'express';
 import { DEFAULT_PORT } from './constants.js';
 import { connectToDatabase, connectedUri } from './db.js';
@@ -7,6 +8,35 @@ import { ensureActivityIndexes } from './models/activityModel.js';
 import { ensureUserIndexes } from './models/userModel.js';
 import { createActivityRouter } from './routes/activityRoutes.js';
 import { createUserRouter } from './routes/userRoutes.js';
+
+function getAllowedOrigins() {
+  const configuredOrigins = typeof process.env.CORS_ALLOWED_ORIGINS === 'string'
+    ? process.env.CORS_ALLOWED_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean)
+    : [];
+
+  if (configuredOrigins.length > 0) {
+    return configuredOrigins;
+  }
+
+  return ['http://localhost:5173', 'http://127.0.0.1:5173'];
+}
+
+function createCorsOptions() {
+  const allowedOrigins = getAllowedOrigins();
+
+  return {
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`[eco-backend] CORS blocked for origin: ${origin}`));
+    },
+    methods: ['GET', 'POST', 'PUT', 'OPTIONS'],
+    allowedHeaders: ['Content-Type'],
+  };
+}
 
 async function initializeDataLayer() {
   await connectToDatabase();
@@ -17,20 +47,9 @@ export async function createApp() {
   await initializeDataLayer();
 
   const app = express();
+  const corsOptions = createCorsOptions();
 
-  app.use((request, response, next) => {
-    response.setHeader('Access-Control-Allow-Origin', '*');
-    response.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,OPTIONS');
-    response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-    if (request.method === 'OPTIONS') {
-      response.sendStatus(204);
-      return;
-    }
-
-    next();
-  });
-
+  app.use(cors(corsOptions));
   app.use(express.json());
   app.use('/api/users', createUserRouter());
   app.use('/api', createActivityRouter());
