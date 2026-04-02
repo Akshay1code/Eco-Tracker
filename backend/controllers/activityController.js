@@ -1,39 +1,7 @@
 import { getDailyRecord, listDailyRecords, mutateDailyRecord } from '../models/activityModel.js';
 import { findUserByUserId, syncUserProgress, toPublicUser } from '../models/userModel.js';
 import { applyActivityTrigger, applyBatteryTrigger, applyTimeTrigger, getRecordDate } from '../services/ecoEngine.js';
-import { connectedUri } from '../db.js';
-
-function describeDatabaseConnection(uri) {
-  if (!uri) {
-    return {
-      status: 'disconnected',
-      mode: 'unknown',
-      label: 'Database unavailable',
-    };
-  }
-
-  if (uri.startsWith('mongodb+srv://') || uri.includes('mongodb.net')) {
-    return {
-      status: 'connected',
-      mode: 'atlas',
-      label: 'MongoDB Atlas',
-    };
-  }
-
-  if (uri.includes('127.0.0.1') || uri.includes('localhost')) {
-    return {
-      status: 'connected',
-      mode: 'local',
-      label: 'Local MongoDB',
-    };
-  }
-
-  return {
-    status: 'connected',
-    mode: 'custom',
-    label: 'MongoDB',
-  };
-}
+import { getDatabaseStatus } from '../db.js';
 
 function normalizeUserId(value) {
   return typeof value === 'string' && value.trim() ? value.trim().toLowerCase() : '';
@@ -97,7 +65,7 @@ export async function getHealth() {
       ok: true,
       service: 'eco-activity-backend',
       date: getRecordDate(),
-      database: describeDatabaseConnection(connectedUri),
+      database: getDatabaseStatus(),
     },
   };
 }

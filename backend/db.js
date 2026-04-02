@@ -1,3 +1,4 @@
+import './bootstrapEnv.js';
 import { MongoClient } from 'mongodb';
 
 function normalizeMongoUri(uri) {
@@ -11,6 +12,8 @@ const SERVER_SELECTION_TIMEOUT_MS = Number(process.env.MONGODB_SERVER_SELECTION_
 let clientPromise = null;
 let databaseInstance = null;
 let connectedUri = null;
+let connectionState = 'idle';
+let lastConnectionError = null;
 
 function isAtlasUri(uri) {
   return typeof uri === 'string' && (uri.startsWith('mongodb+srv://') || uri.includes('mongodb.net'));
@@ -74,12 +77,17 @@ export async function connectToDatabase() {
 
   if (!clientPromise) {
     assertAtlasConfiguration(DEFAULT_URI);
+    connectionState = 'connecting';
+    lastConnectionError = null;
     clientPromise = (async () => {
       try {
         const client = await connectClient(DEFAULT_URI);
         connectedUri = DEFAULT_URI;
+        connectionState = 'connected';
         return client;
       } catch (primaryError) {
+        connectionState = 'error';
+        lastConnectionError = primaryError instanceof Error ? primaryError.message : String(primaryError);
         throw primaryError;
       }
     })().catch((error) => {
@@ -99,6 +107,47 @@ export function getDb() {
   }
 
   return databaseInstance;
+}
+
+export function getDatabaseStatus() {
+  if (connectionState === 'connected' && connectedUri) {
+    if (connectedUri.startsWith('mongodb+srv://') || connectedUri.includes('mongodb.net')) {
+      return {
+        status: 'connected',
+        mode: 'atlas',
+        label: 'MongoDB Atlas',
+        error: null,
+      };
+    }
+
+    if (connectedUri.includes('127.0.0.1') || connectedUri.includes('localhost')) {
+      return {
+        status: 'connected',
+        mode: 'local',
+        label: 'Local MongoDB',
+        error: null,
+      };
+    }
+
+    return {
+      status: 'connected',
+      mode: 'custom',
+      label: 'MongoDB',
+      error: null,
+    };
+  }
+
+  return {
+    status: connectionState === 'error' ? 'disconnected' : connectionState,
+    mode: 'unknown',
+    label:
+      connectionState === 'connecting'
+        ? 'Database connecting'
+        : connectionState === 'error'
+          ? 'Database unavailable'
+          : 'Database not initialized',
+    error: lastConnectionError,
+  };
 }
 
 export { DATABASE_NAME, connectedUri };

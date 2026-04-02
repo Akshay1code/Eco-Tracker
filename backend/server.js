@@ -1,9 +1,10 @@
+import './bootstrapEnv.js';
 import { fileURLToPath } from 'node:url';
 import http from 'node:http';
 import cors from 'cors';
 import express from 'express';
 import { DEFAULT_PORT } from './constants.js';
-import { connectToDatabase, connectedUri } from './db.js';
+import { connectToDatabase } from './db.js';
 import { ensureActivityIndexes } from './models/activityModel.js';
 import { ensureUserIndexes } from './models/userModel.js';
 import { createActivityRouter } from './routes/activityRoutes.js';
@@ -40,20 +41,54 @@ function createCorsOptions() {
   };
 }
 
+let dataLayerPromise = null;
+
 async function initializeDataLayer() {
-  await connectToDatabase();
-  await Promise.all([ensureUserIndexes(), ensureActivityIndexes()]);
+  if (dataLayerPromise) {
+    return dataLayerPromise;
+  }
+
+  dataLayerPromise = (async () => {
+    await connectToDatabase();
+    await Promise.all([ensureUserIndexes(), ensureActivityIndexes()]);
+  })().catch((error) => {
+    dataLayerPromise = null;
+    throw error;
+  });
+
+  return dataLayerPromise;
+}
+
+function createDatabaseUnavailableError(error) {
+  const wrappedError = new Error('Database unavailable.');
+  wrappedError.statusCode = 503;
+  wrappedError.details = error instanceof Error ? error.message : String(error);
+  return wrappedError;
 }
 
 export async function createApp() {
-  await initializeDataLayer();
-
   const app = express();
   const corsOptions = createCorsOptions();
 
   app.use(cors(corsOptions));
   app.options(/.*/, cors(corsOptions));
   app.use(express.json());
+  app.use(
+    '/api',
+    async (request, _response, next) => {
+      if (request.path === '/health') {
+        next();
+        return;
+      }
+
+      try {
+        await initializeDataLayer();
+        next();
+      } catch (error) {
+        next(createDatabaseUnavailableError(error));
+      }
+    }
+  );
   app.use('/api/users', createUserRouter());
   app.use('/api', createActivityRouter());
 
@@ -77,7 +112,12 @@ export async function createApp() {
 
     response.status(error?.statusCode || 500).json({
       error: error?.statusCode ? error.message : 'Internal server error.',
-      details: error instanceof Error ? error.message : 'Unknown error',
+      details:
+        typeof error?.details === 'string'
+          ? error.details
+          : error instanceof Error
+            ? error.message
+            : 'Unknown error',
     });
   });
 
@@ -96,9 +136,6 @@ if (isDirectRun) {
     const app = await createApp();
     app.listen(DEFAULT_PORT, () => {
       console.log(`[eco-backend] listening on http://localhost:${DEFAULT_PORT}`);
-      if (connectedUri) {
-        console.log(`[eco-backend] database connected: ${connectedUri}`);
-      }
     });
   } catch (error) {
     console.error('[eco-backend] failed to start', error);
