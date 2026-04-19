@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { TODOS_INIT } from '../../data/mockData.js';
-import CarbonGauge from './CarbonGauge.jsx';
+import CarbonFootprint from './CarbonFootprint.jsx';
 import DashboardMascot from './DashboardMascot.jsx';
 import LeafSVG from '../shared/LeafSVG.jsx';
 import StatChip from '../shared/StatChip.jsx';
@@ -28,6 +28,7 @@ function HeroCard({ onXPData, deviceData, onRequestMotionAccess }) {
   const liveActivity = deviceData?.activity ?? 'idle';
   const trackingStatus = deviceData?.trackingStatus ?? 'active';
   const meaningfulUpdates = deviceData?.meaningfulUpdates ?? 0;
+  const heroFootprintScore = Math.max(0, Math.min(10, liveScore * 10));
   const sampleSeconds = deviceData?.samplingIntervalSeconds ?? 60;
   const movementThreshold = deviceData?.movementThresholdMeters ?? 20;
   const motionSupported = deviceData?.supported?.motion ?? false;
@@ -129,7 +130,12 @@ function HeroCard({ onXPData, deviceData, onRequestMotionAccess }) {
 
       <div className="hero-card__side">
         <div className="hero-card__gauge-card">
-          <CarbonGauge score={liveScore} />
+          <CarbonFootprint
+            score={heroFootprintScore}
+            animated
+            showControls={false}
+            size={220}
+          />
           <div className="hero-card__xp">
             <div className="hero-card__xp-label">Today's XP</div>
             <div className="hero-card__xp-value">{stats.totalXP}</div>
