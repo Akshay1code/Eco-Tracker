@@ -66,20 +66,6 @@ const PALETTES = [
   },
 ];
 
-const BODY_PATH =
-  'M89 300 C61 296 44 277 41 248 C39 226 49 204 63 186 C74 171 81 156 81 141 C80 119 68 101 69 77 C70 56 84 42 104 39 C123 36 143 46 152 63 C162 81 160 102 151 121 C142 140 138 156 142 173 C147 195 161 215 159 239 C157 264 141 286 117 297 C107 301 98 302 89 300 Z';
-
-const INNER_BODY_PATH =
-  'M87 293 C64 289 50 272 48 246 C47 226 56 207 68 190 C78 177 84 163 84 147 C84 128 74 111 75 87 C76 65 88 50 105 47 C121 44 138 52 146 67 C154 82 152 101 145 118 C137 136 133 151 136 168 C140 188 152 208 151 232 C149 254 136 272 115 286 C107 291 98 293 87 293 Z';
-
-const TOE_PATHS = [
-  'M58 70 C45 66 39 53 43 40 C48 26 63 20 77 26 C90 31 95 45 90 58 C84 71 71 75 58 70 Z',
-  'M82 53 C70 50 65 38 69 27 C73 16 86 11 99 16 C111 21 116 33 112 45 C107 57 94 60 82 53 Z',
-  'M107 54 C96 51 92 41 95 31 C99 20 110 16 121 20 C132 24 137 34 133 44 C129 54 118 57 107 54 Z',
-  'M132 67 C123 64 119 55 122 46 C126 37 136 33 145 37 C154 41 159 50 156 59 C152 67 142 70 132 67 Z',
-  'M150 88 C143 86 139 79 141 71 C144 63 152 59 160 61 C168 63 173 70 171 78 C168 86 159 90 150 88 Z',
-];
-
 function clampScore(score) {
   return Math.max(0, Math.min(10, Number.isFinite(score) ? score : 5));
 }
@@ -231,18 +217,9 @@ function CarbonFootprint({
   }, [currentScore, palette]);
 
   const ids = {
-    baseGradient: `cfp-base-${svgId}`,
-    innerGradient: `cfp-inner-${svgId}`,
-    glossBlur: `cfp-gloss-${svgId}`,
-    rimShadow: `cfp-rim-${svgId}`,
-    bodyClip: `cfp-body-clip-${svgId}`,
-    shimmerGradient: `cfp-shimmer-${svgId}`,
-    toeClip: `cfp-toe-clip-${svgId}`,
-    backdropBlur: `cfp-backdrop-${svgId}`,
-    ...TOE_PATHS.reduce((accumulator, _path, index) => {
-      accumulator[`toeGradient${index}`] = `cfp-toe-${index}-${svgId}`;
-      return accumulator;
-    }, {}),
+    footGradient: `cfp-foot-${svgId}`,
+    glowGradient: `cfp-glow-${svgId}`,
+    footShadow: `cfp-shadow-${svgId}`,
   };
 
   const showGlowPulse = animated && currentScore <= 2;
@@ -566,138 +543,59 @@ function CarbonFootprint({
       {/* Main glassmorphic card wrapper */}
       <div className="cfp-card">
         <div className="cfp-visual-wrap">
-          {/* Designer-crafted 3D footprint SVG */}
+          {/* Reference-style footprint SVG */}
           <svg
             className={svgClassName}
-            viewBox="0 0 200 320"
+            viewBox="0 0 82 150"
             role="img"
             aria-label={`Carbon footprint score ${currentScore.toFixed(1)} out of 10 in ${palette.name} theme`}
           >
             <defs>
-              {/* Soft footprint shadow and embossed rim */}
-              <filter id={ids.rimShadow} x="-30%" y="-20%" width="160%" height="180%">
-                <feDropShadow dx="0" dy="4" stdDeviation="6" floodColor={derived.deepShadow} floodOpacity="0.55" />
+              <filter id={ids.footShadow} x="-25%" y="-15%" width="150%" height="165%">
+                <feDropShadow dx="-2" dy="7" stdDeviation="5" floodColor="rgba(5,75,28,0.32)" />
               </filter>
-
-              {/* Heel gloss blur */}
-              <filter id={ids.glossBlur} x="-30%" y="-30%" width="160%" height="160%">
-                <feGaussianBlur stdDeviation="2" />
-              </filter>
-
-              {/* Backdrop blur for inner haze */}
-              <filter id={ids.backdropBlur} x="-25%" y="-25%" width="150%" height="150%">
-                <feGaussianBlur stdDeviation="5" />
-              </filter>
-
-              {/* Base 3D fill */}
-              <radialGradient id={ids.baseGradient} cx="70" cy="100" r="140" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stopColor={derived.brightCore} style={{ transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)' }} />
-                <stop offset="42%" stopColor={derived.brightEdge} style={{ transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)' }} />
-                <stop offset="100%" stopColor={derived.darkEdge} style={{ transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)' }} />
+              <linearGradient id={ids.footGradient} x1="8" y1="74" x2="74" y2="78" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="#07833a" />
+                <stop offset="45%" stopColor="#71be1d" />
+                <stop offset="100%" stopColor="#93cd1d" />
+              </linearGradient>
+              <radialGradient id={ids.glowGradient} cx="50%" cy="42%" r="50%">
+                <stop offset="0%" stopColor="rgba(140, 214, 48, 0.28)" />
+                <stop offset="100%" stopColor="rgba(140, 214, 48, 0)" />
               </radialGradient>
-
-              {/* Inner highlight layer */}
-              <linearGradient id={ids.innerGradient} x1="42" y1="42" x2="158" y2="248" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stopColor="rgba(255,255,255,0.62)" style={{ transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)' }} />
-                <stop offset="48%" stopColor="rgba(255,255,255,0.14)" style={{ transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)' }} />
-                <stop offset="100%" stopColor="rgba(255,255,255,0)" style={{ transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)' }} />
-              </linearGradient>
-
-              {/* Toe shimmer sweep */}
-              <linearGradient id={ids.shimmerGradient} x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="rgba(255,255,255,0)" />
-                <stop offset="50%" stopColor="rgba(255,255,255,0.45)" />
-                <stop offset="100%" stopColor="rgba(255,255,255,0)" />
-              </linearGradient>
-
-              {/* Foot clipping masks */}
-              <clipPath id={ids.bodyClip}>
-                <path d={BODY_PATH} />
-              </clipPath>
-
-              <clipPath id={ids.toeClip}>
-                {TOE_PATHS.map((toePath, index) => (
-                  <path key={ids[`toeGradient${index}`]} d={toePath} />
-                ))}
-              </clipPath>
-
-              {/* Individual toe gradients for rounded depth */}
-              {TOE_PATHS.map((toePath, index) => {
-                const toeCenters = [
-                  { x: 58, y: 34, r: 22 },
-                  { x: 82, y: 25, r: 21 },
-                  { x: 108, y: 27, r: 20 },
-                  { x: 133, y: 42, r: 18 },
-                  { x: 150, y: 64, r: 16 },
-                ];
-
-                return (
-                  <radialGradient
-                    key={toePath}
-                    id={ids[`toeGradient${index}`]}
-                    cx={toeCenters[index].x}
-                    cy={toeCenters[index].y}
-                    r={toeCenters[index].r}
-                    gradientUnits="userSpaceOnUse"
-                  >
-                    <stop offset="0%" stopColor={derived.toeHighlight} style={{ transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)' }} />
-                    <stop offset="45%" stopColor={lighten(derived.baseColor, 0.22)} style={{ transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)' }} />
-                    <stop offset="100%" stopColor={derived.toeShadow} style={{ transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)' }} />
-                  </radialGradient>
-                );
-              })}
             </defs>
 
-            {/* Toe connection ambient occlusion */}
-            <ellipse cx="112" cy="86" rx="44" ry="16" fill={derived.occlusion} filter={`url(#${ids.backdropBlur})`} />
+            <ellipse cx="41" cy="76" rx="34" ry="56" fill={`url(#${ids.glowGradient})`} />
 
-            {/* Main footprint body */}
-            <g filter={`url(#${ids.rimShadow})`}>
-              <path d={BODY_PATH} fill={`url(#${ids.baseGradient})`} />
-            </g>
+            <g filter={`url(#${ids.footShadow})`}>
+              <ellipse cx="67.5" cy="18" rx="14.5" ry="15.5" fill={`url(#${ids.footGradient})`} />
+              <ellipse cx="48.5" cy="16" rx="11" ry="13.5" fill={`url(#${ids.footGradient})`} />
+              <ellipse cx="31.5" cy="23.5" rx="8.5" ry="11.5" fill={`url(#${ids.footGradient})`} />
+              <ellipse cx="19" cy="34" rx="7" ry="9" fill={`url(#${ids.footGradient})`} />
 
-            {/* Inner reflective highlight for raised surface */}
-            <g clipPath={`url(#${ids.bodyClip})`} opacity="0.35">
               <path
-                d={INNER_BODY_PATH}
-                fill={`url(#${ids.innerGradient})`}
-                transform="translate(-4 -6)"
+                d="M63 27C34 26 12 48 12 81c0 18 6 35 14 48c8-23 17-37 30-47c8-6 16-18 17-33c1-8-2-16-10-22Z"
+                fill={`url(#${ids.footGradient})`}
+              />
+              <path
+                d="M46 82c-10 9-17 24-22 45c7 12 19 20 33 20c14 0 24-6 24-18c0-9-4-15-11-22c-7-7-13-14-14-25c-1 0-4 0-10 0Z"
+                fill={`url(#${ids.footGradient})`}
               />
             </g>
 
-            {/* Heel specular gloss */}
-            <ellipse
-              cx="94"
-              cy="229"
-              rx="27"
-              ry="10"
-              fill="rgba(255,255,255,0.2)"
-              filter={`url(#${ids.glossBlur})`}
+            <path
+              d="M57 26c-2 14-6 25-10 35c-7 2-14 5-20 10"
+              stroke="#fff"
+              strokeWidth="4.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             />
-
-            {/* Individual rounded toes */}
-            {TOE_PATHS.map((toePath, index) => (
-              <g key={toePath} filter={`url(#${ids.rimShadow})`}>
-                <path d={toePath} fill={`url(#${ids[`toeGradient${index}`]})`} />
-              </g>
-            ))}
-
-            {/* Toe highlight sweep on mount */}
-            {animated ? (
-              <g clipPath={`url(#${ids.toeClip})`} opacity="0.85">
-                <rect x="-90" y="0" width="92" height="120" fill={`url(#${ids.shimmerGradient})`}>
-                  <animateTransform
-                    attributeName="transform"
-                    type="translate"
-                    from="-90 0"
-                    to="200 0"
-                    dur="1.2s"
-                    begin="0s"
-                    fill="freeze"
-                  />
-                </rect>
-              </g>
-            ) : null}
+            <path d="M42 60c6 1 11 3 16 7" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" />
+            <path d="M37 72c5 1 10 4 15 8" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" />
+            <path d="M31 87c4 2 8 6 12 10" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" />
+            <path d="M48 96c-3 13-7 23-11 30" stroke="#fff" strokeWidth="4.5" strokeLinecap="round" />
+            <path d="M35 118c4-1 9-1 14 2" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" />
+            <path d="M29 129c4-1 8 0 12 3" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" />
           </svg>
 
           {/* Floating score overlay */}
