@@ -584,18 +584,33 @@ function CarbonFootprint({
             </g>
 
             <path
-              d="M57 26c-2 14-6 25-10 35c-7 2-14 5-20 10"
-              stroke="#fff"
-              strokeWidth="4.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              d="M55 23c2 0 3 2 3 4c-2 15-6 30-12 45c-1 2-3 3-5 2c-2-1-2-3-2-5c4-9 8-22 10-36c1-6 2-10 2-10c1 0 2 0 4 0Z"
+              fill="#fff"
             />
-            <path d="M42 60c6 1 11 3 16 7" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" />
-            <path d="M37 72c5 1 10 4 15 8" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" />
-            <path d="M31 87c4 2 8 6 12 10" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" />
-            <path d="M48 96c-3 13-7 23-11 30" stroke="#fff" strokeWidth="4.5" strokeLinecap="round" />
-            <path d="M35 118c4-1 9-1 14 2" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" />
-            <path d="M29 129c4-1 8 0 12 3" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" />
+            <path
+              d="M41 67c5 0 12 2 20 8c2 1 2 3 1 5c-1 1-3 2-5 1c-7-5-13-7-17-8c-2 0-3-2-3-4c1-1 2-2 4-2Z"
+              fill="#fff"
+            />
+            <path
+              d="M36 79c5 1 11 4 17 9c2 1 2 3 1 5c-1 2-3 2-5 1c-6-5-11-7-15-8c-2-1-3-2-2-4c0-2 2-3 4-3Z"
+              fill="#fff"
+            />
+            <path
+              d="M30 95c4 2 9 6 14 11c2 2 2 4 1 5c-2 2-4 2-6 0c-5-5-9-8-13-10c-2-1-2-3-1-5s3-2 5-1Z"
+              fill="#fff"
+            />
+            <path
+              d="M44 94c2 0 4 2 4 4c-3 12-7 24-13 36c-1 2-3 3-5 2c-2-1-3-3-2-5c6-11 10-22 13-34c0-2 1-3 3-3Z"
+              fill="#fff"
+            />
+            <path
+              d="M30 118c4-1 10 0 16 4c2 1 3 3 2 5c-1 2-3 2-5 2c-6-3-10-4-13-3c-2 0-4-1-4-3c0-2 2-4 4-5Z"
+              fill="#fff"
+            />
+            <path
+              d="M24 129c5-1 10 0 15 3c2 1 3 3 2 5c-1 2-3 3-5 2c-5-3-8-3-11-3c-2 1-4-1-5-3c0-2 2-4 4-4Z"
+              fill="#fff"
+            />
           </svg>
 
           {/* Floating score overlay */}
