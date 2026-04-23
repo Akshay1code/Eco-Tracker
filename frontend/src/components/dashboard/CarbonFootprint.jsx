@@ -513,6 +513,35 @@ function CarbonFootprint({
             100% { transform: scale(1); }
           }
 
+          .cfp-toe {
+            transform-origin: center;
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            animation: cfp-float 4s ease-in-out infinite;
+          }
+          .cfp-toe:hover {
+            transform: scale(1.15) translateY(-2px);
+          }
+          .cfp-toe-1 { animation-delay: 0.0s; transform-origin: 67.5px 18px; }
+          .cfp-toe-2 { animation-delay: 0.2s; transform-origin: 48.5px 16px; }
+          .cfp-toe-3 { animation-delay: 0.4s; transform-origin: 31.5px 23.5px; }
+          .cfp-toe-4 { animation-delay: 0.6s; transform-origin: 19px 34px; }
+
+          .cfp-leaf {
+            transform-origin: 37px 54px;
+            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+          }
+          .cfp-leaf:hover {
+            transform: scale(1.03) rotate(1deg);
+          }
+          .cfp-leaf-bottom {
+            transform-origin: 34px 101px;
+          }
+
+          @keyframes cfp-float {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-3px) scale(1.02); }
+          }
+
           @media (max-width: 640px) {
             .cfp-card,
             .cfp-controls {
@@ -568,49 +597,22 @@ function CarbonFootprint({
             <ellipse cx="41" cy="76" rx="34" ry="56" fill={`url(#${ids.glowGradient})`} />
 
             <g filter={`url(#${ids.footShadow})`}>
-              <ellipse cx="67.5" cy="18" rx="14.5" ry="15.5" fill={`url(#${ids.footGradient})`} />
-              <ellipse cx="48.5" cy="16" rx="11" ry="13.5" fill={`url(#${ids.footGradient})`} />
-              <ellipse cx="31.5" cy="23.5" rx="8.5" ry="11.5" fill={`url(#${ids.footGradient})`} />
-              <ellipse cx="19" cy="34" rx="7" ry="9" fill={`url(#${ids.footGradient})`} />
+              <ellipse className="cfp-toe cfp-toe-1" cx="67.5" cy="18" rx="14.5" ry="15.5" fill={`url(#${ids.footGradient})`} />
+              <ellipse className="cfp-toe cfp-toe-2" cx="48.5" cy="16" rx="11" ry="13.5" fill={`url(#${ids.footGradient})`} />
+              <ellipse className="cfp-toe cfp-toe-3" cx="31.5" cy="23.5" rx="8.5" ry="11.5" fill={`url(#${ids.footGradient})`} />
+              <ellipse className="cfp-toe cfp-toe-4" cx="19" cy="34" rx="7" ry="9" fill={`url(#${ids.footGradient})`} />
 
               <path
+                className="cfp-leaf"
                 d="M63 27C34 26 12 48 12 81c0 18 6 35 14 48c8-23 17-37 30-47c8-6 16-18 17-33c1-8-2-16-10-22Z"
                 fill={`url(#${ids.footGradient})`}
               />
               <path
+                className="cfp-leaf cfp-leaf-bottom"
                 d="M46 82c-10 9-17 24-22 45c7 12 19 20 33 20c14 0 24-6 24-18c0-9-4-15-11-22c-7-7-13-14-14-25c-1 0-4 0-10 0Z"
                 fill={`url(#${ids.footGradient})`}
               />
             </g>
-
-            <path
-              d="M55 23c2 0 3 2 3 4c-2 15-6 30-12 45c-1 2-3 3-5 2c-2-1-2-3-2-5c4-9 8-22 10-36c1-6 2-10 2-10c1 0 2 0 4 0Z"
-              fill="#fff"
-            />
-            <path
-              d="M41 67c5 0 12 2 20 8c2 1 2 3 1 5c-1 1-3 2-5 1c-7-5-13-7-17-8c-2 0-3-2-3-4c1-1 2-2 4-2Z"
-              fill="#fff"
-            />
-            <path
-              d="M36 79c5 1 11 4 17 9c2 1 2 3 1 5c-1 2-3 2-5 1c-6-5-11-7-15-8c-2-1-3-2-2-4c0-2 2-3 4-3Z"
-              fill="#fff"
-            />
-            <path
-              d="M30 95c4 2 9 6 14 11c2 2 2 4 1 5c-2 2-4 2-6 0c-5-5-9-8-13-10c-2-1-2-3-1-5s3-2 5-1Z"
-              fill="#fff"
-            />
-            <path
-              d="M44 94c2 0 4 2 4 4c-3 12-7 24-13 36c-1 2-3 3-5 2c-2-1-3-3-2-5c6-11 10-22 13-34c0-2 1-3 3-3Z"
-              fill="#fff"
-            />
-            <path
-              d="M30 118c4-1 10 0 16 4c2 1 3 3 2 5c-1 2-3 2-5 2c-6-3-10-4-13-3c-2 0-4-1-4-3c0-2 2-4 4-5Z"
-              fill="#fff"
-            />
-            <path
-              d="M24 129c5-1 10 0 15 3c2 1 3 3 2 5c-1 2-3 3-5 2c-5-3-8-3-11-3c-2 1-4-1-5-3c0-2 2-4 4-4Z"
-              fill="#fff"
-            />
           </svg>
 
           {/* Floating score overlay */}

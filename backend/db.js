@@ -6,6 +6,7 @@ function normalizeMongoUri(uri) {
 }
 
 const DEFAULT_URI = normalizeMongoUri(process.env.MONGODB_URI);
+const FALLBACK_URI = normalizeMongoUri(process.env.MONGODB_URI_FALLBACK);
 const DATABASE_NAME = process.env.MONGODB_DB_NAME || 'ecotrackerdb';
 const SERVER_SELECTION_TIMEOUT_MS = Number(process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS || 5000);
 
@@ -17,6 +18,18 @@ let lastConnectionError = null;
 
 function isAtlasUri(uri) {
   return typeof uri === 'string' && (uri.startsWith('mongodb+srv://') || uri.includes('mongodb.net'));
+}
+
+function shouldTryFallback(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes('querySrv ETIMEOUT') ||
+    message.includes('querySrv ENOTFOUND') ||
+    message.includes('querySrv ECONNREFUSED') ||
+    message.includes('ECONNRESET') ||
+    message.includes('ECONNREFUSED') ||
+    message.includes('tlsv1 alert internal error')
+  );
 }
 
 function enhanceConnectionError(uri, error) {
@@ -70,6 +83,20 @@ function assertAtlasConfiguration(uri) {
   }
 }
 
+function assertFallbackConfiguration(uri) {
+  if (!uri) {
+    return;
+  }
+
+  if (uri.startsWith('mongodb://') || isAtlasUri(uri)) {
+    return;
+  }
+
+  throw new Error(
+    `[eco-backend] MONGODB_URI_FALLBACK must be a valid MongoDB connection string. Received: ${uri}`
+  );
+}
+
 export async function connectToDatabase() {
   if (databaseInstance) {
     return databaseInstance;
@@ -77,6 +104,7 @@ export async function connectToDatabase() {
 
   if (!clientPromise) {
     assertAtlasConfiguration(DEFAULT_URI);
+    assertFallbackConfiguration(FALLBACK_URI);
     connectionState = 'connecting';
     lastConnectionError = null;
     clientPromise = (async () => {
@@ -86,6 +114,21 @@ export async function connectToDatabase() {
         connectionState = 'connected';
         return client;
       } catch (primaryError) {
+        if (FALLBACK_URI && FALLBACK_URI !== DEFAULT_URI && shouldTryFallback(primaryError)) {
+          try {
+            const client = await connectClient(FALLBACK_URI);
+            connectedUri = FALLBACK_URI;
+            connectionState = 'connected';
+            lastConnectionError = null;
+            return client;
+          } catch (fallbackError) {
+            connectionState = 'error';
+            lastConnectionError =
+              fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+            throw fallbackError;
+          }
+        }
+
         connectionState = 'error';
         lastConnectionError = primaryError instanceof Error ? primaryError.message : String(primaryError);
         throw primaryError;
