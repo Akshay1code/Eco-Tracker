@@ -4,7 +4,7 @@ const TITLES = {
   community: 'Community Rankings',
   journal: 'Eco Journal',
   goals: 'Goals & Rewards',
-  settings: 'Settings',
+  profile: 'Eco Profile',
 };
 
 function TopBar({ activeTab = 'dashboard', onLogout }) {
@@ -22,15 +22,7 @@ function TopBar({ activeTab = 'dashboard', onLogout }) {
         <h1>{TITLES[activeTab] || 'EcoJourney'}</h1>
         <p>Welcome back, traveler. {dateText}</p>
       </div>
-      <div className="topbar-actions">
-        <div className="streak-pill">{'\uD83D\uDD25'} 12-day streak</div>
-        <button type="button" className="bell-btn" aria-label="Notifications">
-          {'\uD83D\uDD14'}
-        </button>
-        <button type="button" className="logout-btn" onClick={onLogout}>
-          Logout
-        </button>
-      </div>
+
     </header>
   );
 }

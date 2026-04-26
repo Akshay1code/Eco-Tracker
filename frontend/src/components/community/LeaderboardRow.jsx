@@ -1,64 +1,37 @@
-import Avatar from '../shared/Avatar.jsx';
-import { RANK_BADGES } from '../../data/mockData.js';
+import { MdChevronRight } from 'react-icons/md';
+import '../../styles/community.css';
 
-function rankTone(rank) {
-  if (rank === 1) return { bg: 'rgba(245,158,11,.16)', border: 'rgba(245,158,11,.35)', color: '#b45309' };
-  if (rank === 2) return { bg: 'rgba(15,61,42,.1)', border: 'rgba(15,61,42,.24)', color: '#0f3d2a' };
-  return { bg: 'rgba(156,163,175,.12)', border: 'rgba(156,163,175,.24)', color: '#374151' };
-}
+const getRankTitle = (xp) => {
+  if (xp > 5000) return 'Eco Legend';
+  if (xp > 2000) return 'Green Master';
+  if (xp > 1000) return 'Eco Warrior';
+  if (xp > 500) return 'Seedling';
+  return 'Eco Novice';
+};
 
 function LeaderboardRow({ user, onClick }) {
-  const tone = rankTone(user.rank);
-
   return (
-    <button
-      type="button"
-      onClick={() => onClick?.(user)}
-      style={{
-        width: '100%',
-        display: 'grid',
-        gridTemplateColumns: '56px 1fr auto',
-        alignItems: 'center',
-        gap: 12,
-        borderRadius: 14,
-        border: `1px solid ${tone.border}`,
-        background: '#fff',
-        padding: 10,
-        cursor: 'pointer',
-        textAlign: 'left',
-      }}
-    >
-      <div
-        className={user.rank === 1 ? 'badge-shine' : ''}
-        style={{
-          width: 42,
-          height: 42,
-          borderRadius: 12,
-          background: tone.bg,
-          display: 'grid',
-          placeItems: 'center',
-          color: tone.color,
-          fontWeight: 800,
-        }}
-      >
-        #{user.rank}
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <Avatar name={user.name} size={38} />
+    <div className="leader-row" onClick={() => onClick?.(user)} style={{ cursor: 'pointer', padding: '0.875rem 1rem' }}>
+      <div className="rank-num">#{String(user.rank).padStart(2, '0')}</div>
+      <div className="user-info-cell">
+        <div className="list-avatar" style={{ width: '32px', height: '32px', fontSize: '0.8rem' }}>
+          {user.name?.charAt(0)}
+        </div>
         <div>
-          <div style={{ fontWeight: 700, color: 'var(--forest)' }}>{user.name}</div>
-          <div style={{ fontSize: 12, color: 'var(--gray-600)' }}>{RANK_BADGES[user.badge]}</div>
+          <div className="user-name" style={{ fontSize: '0.9rem' }}>{user.name}</div>
+          <div className="user-title" style={{ fontSize: '0.7rem' }}>{getRankTitle(user.xp)}</div>
         </div>
       </div>
-
-      <div style={{ textAlign: 'right' }}>
-        <div style={{ fontWeight: 700, color: 'var(--forest)' }}>{user.score.toFixed(2)} kg</div>
-        <div style={{ fontSize: 12, color: 'var(--gray-600)' }}>
-          {user.xp} XP <span style={{ color: user.trend === 'up' ? '#16a34a' : '#dc2626' }}>{user.trend === 'up' ? '?' : '?'}</span>
-        </div>
+      <div className="score-cell" style={{ fontSize: '0.8rem' }}>
+        {user.score?.toFixed(2)} kg
       </div>
-    </button>
+      <div className="xp-cell" style={{ fontSize: '0.8rem' }}>
+        {user.xp} XP
+      </div>
+      <div className="chevron-cell">
+        <MdChevronRight />
+      </div>
+    </div>
   );
 }
 

@@ -1,5 +1,13 @@
 import { Router } from 'express';
-import { getLeaderboard, getUserProfile, loginUser, saveUserProfile, signupUser } from '../controllers/userController.js';
+import {
+  getLeaderboard,
+  getUserProfile,
+  loginUser,
+  saveUserProfile,
+  signupUser,
+  updateGoals,
+  updateJournal,
+} from '../controllers/userController.js';
 
 function asyncRoute(handler) {
   return async (request, response, next) => {
@@ -34,6 +42,22 @@ export function createUserRouter() {
     '/profile',
     asyncRoute(async (request, response) => {
       const result = await saveUserProfile(request.query, request.body);
+      response.status(result.status).json(result.payload);
+    })
+  );
+
+  router.put(
+    '/goals',
+    asyncRoute(async (request, response) => {
+      const result = await updateGoals(request.query, request.body);
+      response.status(result.status).json(result.payload);
+    })
+  );
+
+  router.put(
+    '/journal',
+    asyncRoute(async (request, response) => {
+      const result = await updateJournal(request.query, request.body);
       response.status(result.status).json(result.payload);
     })
   );

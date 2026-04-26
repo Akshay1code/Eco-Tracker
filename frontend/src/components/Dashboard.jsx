@@ -616,10 +616,10 @@ function QuoteCard() {
       <div style={{ color: "rgba(255,255,255,0.72)", fontSize: 13, lineHeight: 1.8, fontStyle: "italic", marginBottom: 12, opacity: fade ? 1 : 0, transition: "opacity 0.3s" }}>
         "{q.text}"
       </div>
-      <div style={{ color: "#4ade80", fontSize: 11, fontWeight: 600, fontFamily: "'Space Mono',monospace", opacity: fade ? 1 : 0, transition: "opacity 0.3s" }}>
+      <div style={{ color: "#4ade80", fontSize: 11, fontWeight: 600, fontFamily: "'Poppins',sans-serif", opacity: fade ? 1 : 0, transition: "opacity 0.3s" }}>
         — {q.author}
       </div>
-      <div style={{ position: "absolute", bottom: 12, right: 16, color: "rgba(255,255,255,0.14)", fontSize: 10, fontFamily: "'Space Mono',monospace" }}>tap ↻</div>
+      <div style={{ position: "absolute", bottom: 12, right: 16, color: "rgba(255,255,255,0.14)", fontSize: 10, fontFamily: "'Poppins',sans-serif" }}>tap ↻</div>
     </div>
   );
 }
@@ -658,7 +658,7 @@ function XPRing({ xp, rank }) {
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: `radial-gradient(circle,${rank.color}0a 0%,transparent 70%)` }}>
         <span style={{ fontSize: 26, lineHeight: 1 }}>{rank.icon}</span>
         <span style={{ color: "#fff", fontWeight: 900, fontSize: 12, marginTop: 4 }}>{xp.toLocaleString()}</span>
-        <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 8, letterSpacing: 2, fontFamily: "'Space Mono',monospace" }}>XP</span>
+        <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 8, letterSpacing: 2, fontFamily: "'Poppins',sans-serif" }}>XP</span>
       </div>
     </div>
   );
@@ -681,11 +681,11 @@ function StatCard({ icon, label, value, unit, glow, pulse, delay = 0 }) {
       {pulse && <div style={{ position: "absolute", top: 12, right: 12, width: 6, height: 6, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 6px #22c55e", animation: "pulseDot 2s infinite" }} />}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
         <span style={{ fontSize: 14 }}>{icon}</span>
-        <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", fontFamily: "'Space Mono',monospace" }}>{label}</span>
+        <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", fontFamily: "'Poppins',sans-serif" }}>{label}</span>
       </div>
       <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
         <span style={{ fontSize: 22, fontWeight: 800, color: "#fff", lineHeight: 1, textShadow: glow ? `0 0 16px ${glow}44` : "none" }}>{value}</span>
-        <span style={{ color: "rgba(255,255,255,0.22)", fontSize: 10, fontFamily: "'Space Mono',monospace" }}>{unit}</span>
+        <span style={{ color: "rgba(255,255,255,0.22)", fontSize: 10, fontFamily: "'Poppins',sans-serif" }}>{unit}</span>
       </div>
     </div>
   );
@@ -716,14 +716,14 @@ function MissionCard({ mission, data, index }) {
         <span style={{ fontSize: 18 }}>{mission.icon}</span>
         <div style={{ flex: 1 }}>
           <div style={{ color: done ? "#fff" : "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: 600, lineHeight: 1.3 }}>{mission.label}</div>
-          <div style={{ color: mission.color, fontSize: 10, marginTop: 2, fontFamily: "'Space Mono',monospace" }}>+{mission.reward} XP</div>
+          <div style={{ color: mission.color, fontSize: 10, marginTop: 2, fontFamily: "'Poppins',sans-serif" }}>+{mission.reward} XP</div>
         </div>
       </div>
       <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 99, overflow: "hidden" }}>
         <div style={{ height: "100%", width: `${progress}%`, borderRadius: 99, background: done ? `linear-gradient(90deg,${mission.color},${mission.color}cc)` : `${mission.color}66`, boxShadow: done ? `0 0 6px ${mission.color}66` : "none", transition: "width 1s ease" }} />
       </div>
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 5 }}>
-        <span style={{ color: done ? mission.color : "rgba(255,255,255,0.18)", fontSize: 9, fontFamily: "'Space Mono',monospace" }}>{progress.toFixed(0)}%</span>
+        <span style={{ color: done ? mission.color : "rgba(255,255,255,0.18)", fontSize: 9, fontFamily: "'Poppins',sans-serif" }}>{progress.toFixed(0)}%</span>
       </div>
     </div>
   );
@@ -737,7 +737,7 @@ function HourlyChart({ history, currentCarbon }) {
   const maxVal = Math.max(...visibleHours.map(h => dataMap[h] || 0), currentCarbon, 0.0001);
   const chartH = 80;
   if (visibleHours.length < 2) return (
-    <div style={{ textAlign: "center", color: "rgba(255,255,255,0.2)", fontSize: 11, padding: "20px 0", fontFamily: "'Space Mono',monospace" }}>
+    <div style={{ textAlign: "center", color: "rgba(255,255,255,0.2)", fontSize: 11, padding: "20px 0", fontFamily: "'Poppins',sans-serif" }}>
       Hourly data will appear as the day progresses
     </div>
   );
@@ -764,7 +764,7 @@ function HourlyChart({ history, currentCarbon }) {
         </svg>
         <div style={{ display: "flex", justifyContent: "space-between", position: "absolute", bottom: 0, left: 0, right: 0 }}>
           {[0, Math.floor(now / 2), now].filter((v, i, a) => a.indexOf(v) === i).map(h => (
-            <span key={h} style={{ color: h === now ? "#4ade80" : "rgba(255,255,255,0.2)", fontSize: 9, fontFamily: "'Space Mono',monospace" }}>{h}:00</span>
+            <span key={h} style={{ color: h === now ? "#4ade80" : "rgba(255,255,255,0.2)", fontSize: 9, fontFamily: "'Poppins',sans-serif" }}>{h}:00</span>
           ))}
         </div>
       </div>
@@ -774,7 +774,7 @@ function HourlyChart({ history, currentCarbon }) {
 
 function WeekChart({ history }) {
   if (!history.length) return (
-    <div style={{ textAlign: "center", color: "rgba(255,255,255,0.2)", fontSize: 11, padding: "28px 0", fontFamily: "'Space Mono',monospace" }}>
+    <div style={{ textAlign: "center", color: "rgba(255,255,255,0.2)", fontSize: 11, padding: "28px 0", fontFamily: "'Poppins',sans-serif" }}>
       Keep tracking to see your weekly trends 📈
     </div>
   );
@@ -794,7 +794,7 @@ function WeekChart({ history }) {
               boxShadow: isToday ? "0 0 10px rgba(34,197,94,0.3)" : "none",
               transition: "height 0.8s ease",
             }} />
-            <span style={{ color: isToday ? "#4ade80" : "rgba(255,255,255,0.25)", fontSize: 8, fontFamily: "'Space Mono',monospace", textAlign: "center" }}>{label}</span>
+            <span style={{ color: isToday ? "#4ade80" : "rgba(255,255,255,0.25)", fontSize: 8, fontFamily: "'Poppins',sans-serif", textAlign: "center" }}>{label}</span>
           </div>
         );
       })}
@@ -852,8 +852,8 @@ function PermissionGate({ onGrant, supported }) {
       }}>
         {requesting ? "⏳ Requesting permission…" : "🌿 Start Tracking Now"}
       </button>
-      {error && <div style={{ color: "#f87171", fontSize: 11, marginTop: 12, fontFamily: "'Space Mono',monospace" }}>Permission denied. Please allow location in browser settings.</div>}
-      {!supported.battery && <div style={{ color: "rgba(251,146,60,0.6)", fontSize: 10, marginTop: 10, fontFamily: "'Space Mono',monospace" }}>⚠ Battery API unavailable in this browser</div>}
+      {error && <div style={{ color: "#f87171", fontSize: 11, marginTop: 12, fontFamily: "'Poppins',sans-serif" }}>Permission denied. Please allow location in browser settings.</div>}
+      {!supported.battery && <div style={{ color: "rgba(251,146,60,0.6)", fontSize: 10, marginTop: 10, fontFamily: "'Poppins',sans-serif" }}>⚠ Battery API unavailable in this browser</div>}
     </div>
   );
 }
@@ -862,7 +862,7 @@ function TrackingBadge({ isTracking }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       <div style={{ width: 7, height: 7, borderRadius: "50%", background: isTracking ? "#22c55e" : "#f87171", boxShadow: isTracking ? "0 0 8px #22c55e" : "0 0 6px #f87171", animation: isTracking ? "pulseDot 2s infinite" : "none" }} />
-      <span style={{ color: isTracking ? "#4ade80" : "rgba(255,255,255,0.3)", fontSize: 9, fontFamily: "'Space Mono',monospace", letterSpacing: 1 }}>{isTracking ? "LIVE" : "PAUSED"}</span>
+      <span style={{ color: isTracking ? "#4ade80" : "rgba(255,255,255,0.3)", fontSize: 9, fontFamily: "'Poppins',sans-serif", letterSpacing: 1 }}>{isTracking ? "LIVE" : "PAUSED"}</span>
     </div>
   );
 }
@@ -874,7 +874,7 @@ function DailySnapshot({ stats, time }) {
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
         <span style={{ fontSize: 15 }}>📊</span>
         <span style={{ color: "rgba(255,255,255,0.85)", fontSize: 13, fontWeight: 700 }}>Today's Summary</span>
-        <span style={{ marginLeft: "auto", color: "rgba(255,255,255,0.25)", fontSize: 10, fontFamily: "'Space Mono',monospace" }}>last saved {time}</span>
+        <span style={{ marginLeft: "auto", color: "rgba(255,255,255,0.25)", fontSize: 10, fontFamily: "'Poppins',sans-serif" }}>last saved {time}</span>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 12 }}>
         {[
@@ -888,7 +888,7 @@ function DailySnapshot({ stats, time }) {
           <div key={i} style={{ textAlign: "center", background: `${it.color}0a`, border: `1px solid ${it.color}18`, borderRadius: 12, padding: "14px 8px" }}>
             <div style={{ fontSize: 22, marginBottom: 6 }}>{it.icon}</div>
             <div style={{ color: it.color, fontWeight: 800, fontSize: 16 }}>{it.value}</div>
-            <div style={{ color: "rgba(255,255,255,0.28)", fontSize: 8, letterSpacing: 2, fontFamily: "'Space Mono',monospace", marginTop: 4 }}>{it.label}</div>
+            <div style={{ color: "rgba(255,255,255,0.28)", fontSize: 8, letterSpacing: 2, fontFamily: "'Poppins',sans-serif", marginTop: 4 }}>{it.label}</div>
           </div>
         ))}
       </div>
@@ -962,7 +962,7 @@ function VideoCard({ video, index, onPlay }) {
           background: `${catColor}22`, border: `1px solid ${catColor}55`,
           borderRadius: 7, padding: "3px 9px",
           color: catColor, fontSize: 9, fontWeight: 700,
-          fontFamily: "'Space Mono',monospace", letterSpacing: 0.5,
+          fontFamily: "'Poppins',sans-serif", letterSpacing: 0.5,
           backdropFilter: "blur(8px)",
         }}>{video.categoryLabel}</div>
 
@@ -972,7 +972,7 @@ function VideoCard({ video, index, onPlay }) {
             background: "linear-gradient(135deg,#22c55e,#16a34a)",
             borderRadius: 7, padding: "3px 9px",
             color: "#fff", fontSize: 9, fontWeight: 800,
-            fontFamily: "'Space Mono',monospace", letterSpacing: 1,
+            fontFamily: "'Poppins',sans-serif", letterSpacing: 1,
             boxShadow: "0 0 12px rgba(34,197,94,0.5)",
           }}>NEW</div>
         )}
@@ -981,7 +981,7 @@ function VideoCard({ video, index, onPlay }) {
           position: "absolute", bottom: 10, right: 10,
           background: "rgba(0,0,0,0.7)", borderRadius: 6,
           padding: "2px 8px", color: "#fff", fontSize: 10,
-          fontFamily: "'Space Mono',monospace",
+          fontFamily: "'Poppins',sans-serif",
         }}>{video.duration}</div>
       </div>
 
@@ -996,7 +996,7 @@ function VideoCard({ video, index, onPlay }) {
             <span key={tag} style={{
               background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
               borderRadius: 6, padding: "2px 8px", color: "rgba(255,255,255,0.3)",
-              fontSize: 9, fontFamily: "'Space Mono',monospace",
+              fontSize: 9, fontFamily: "'Poppins',sans-serif",
             }}>#{tag}</span>
           ))}
         </div>
@@ -1011,14 +1011,14 @@ function VideoCard({ video, index, onPlay }) {
             }}>{video.avatar}</div>
             <div>
               <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 11, fontWeight: 600 }}>{video.creator}</div>
-              <div style={{ color: "rgba(255,255,255,0.25)", fontSize: 9, fontFamily: "'Space Mono',monospace" }}>{video.timeAgo}</div>
+              <div style={{ color: "rgba(255,255,255,0.25)", fontSize: 9, fontFamily: "'Poppins',sans-serif" }}>{video.timeAgo}</div>
             </div>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>👁</span>
-              <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 9, fontFamily: "'Space Mono',monospace" }}>{video.views}</span>
+              <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 9, fontFamily: "'Poppins',sans-serif" }}>{video.views}</span>
             </div>
             <button
               onClick={handleLike}
@@ -1031,7 +1031,7 @@ function VideoCard({ video, index, onPlay }) {
               }}
             >
               <span style={{ fontSize: 11 }}>{liked ? "❤️" : "🤍"}</span>
-              <span style={{ color: liked ? "#f87171" : "rgba(255,255,255,0.3)", fontSize: 9, fontFamily: "'Space Mono',monospace" }}>{likeCount.toLocaleString()}</span>
+              <span style={{ color: liked ? "#f87171" : "rgba(255,255,255,0.3)", fontSize: 9, fontFamily: "'Poppins',sans-serif" }}>{likeCount.toLocaleString()}</span>
             </button>
           </div>
         </div>
@@ -1097,7 +1097,7 @@ function VideoModal({ video, onClose }) {
                     <polygon points="5,3 19,12 5,21" />
                   </svg>
                 </div>
-                <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, fontFamily: "'Space Mono',monospace", letterSpacing: 1 }}>
+                <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, fontFamily: "'Poppins',sans-serif", letterSpacing: 1 }}>
                   COMMUNITY VIDEO
                 </div>
               </div>
@@ -1115,7 +1115,7 @@ function VideoModal({ video, onClose }) {
           <div style={{
             position: "absolute", bottom: 14, right: 14,
             background: "rgba(0,0,0,0.7)", borderRadius: 8, padding: "4px 10px",
-            color: "#fff", fontSize: 11, fontFamily: "'Space Mono',monospace",
+            color: "#fff", fontSize: 11, fontFamily: "'Poppins',sans-serif",
           }}>{video.duration}</div>
         </div>
 
@@ -1125,13 +1125,13 @@ function VideoModal({ video, onClose }) {
             <span style={{
               background: `${catColor}18`, border: `1px solid ${catColor}40`,
               borderRadius: 8, padding: "3px 10px",
-              color: catColor, fontSize: 10, fontWeight: 700, fontFamily: "'Space Mono',monospace",
+              color: catColor, fontSize: 10, fontWeight: 700, fontFamily: "'Poppins',sans-serif",
             }}>{video.categoryLabel}</span>
             {video.tags.map(t => (
               <span key={t} style={{
                 background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
                 borderRadius: 8, padding: "3px 10px",
-                color: "rgba(255,255,255,0.3)", fontSize: 10, fontFamily: "'Space Mono',monospace",
+                color: "rgba(255,255,255,0.3)", fontSize: 10, fontFamily: "'Poppins',sans-serif",
               }}>#{t}</span>
             ))}
           </div>
@@ -1146,10 +1146,10 @@ function VideoModal({ video, onClose }) {
               }}>{video.avatar}</div>
               <div>
                 <div style={{ color: "#fff", fontWeight: 700, fontSize: 13 }}>{video.creator}</div>
-                <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 10, fontFamily: "'Space Mono',monospace" }}>{video.views} views · {video.timeAgo}</div>
+                <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 10, fontFamily: "'Poppins',sans-serif" }}>{video.views} views · {video.timeAgo}</div>
               </div>
             </div>
-            <div style={{ color: "rgba(255,255,255,0.2)", fontSize: 10, fontFamily: "'Space Mono',monospace" }}>
+            <div style={{ color: "rgba(255,255,255,0.2)", fontSize: 10, fontFamily: "'Poppins',sans-serif" }}>
               Press ESC to close
             </div>
           </div>
@@ -1183,7 +1183,7 @@ function TipCarousel() {
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
         <span style={{ fontSize: 14 }}>💬</span>
-        <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 10, letterSpacing: 2, fontFamily: "'Space Mono',monospace" }}>COMMUNITY TIP OF THE DAY</span>
+        <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 10, letterSpacing: 2, fontFamily: "'Poppins',sans-serif" }}>COMMUNITY TIP OF THE DAY</span>
         <div style={{ marginLeft: "auto", display: "flex", gap: 5 }}>
           {COMMUNITY_TIPS.map((_, i) => (
             <div key={i} onClick={() => { setFade(false); setTimeout(() => { setIdx(i); setFade(true); }, 250); }} style={{
@@ -1204,7 +1204,7 @@ function TipCarousel() {
           }}>{tip.icon}</div>
           <div>
             <p style={{ color: "rgba(255,255,255,0.82)", fontSize: 13, lineHeight: 1.8, fontWeight: 500, marginBottom: 8 }}>{tip.tip}</p>
-            <span style={{ color: "#4ade80", fontSize: 10, fontFamily: "'Space Mono',monospace" }}>— {tip.author}</span>
+            <span style={{ color: "#4ade80", fontSize: 10, fontFamily: "'Poppins',sans-serif" }}>— {tip.author}</span>
           </div>
         </div>
       </div>
@@ -1231,7 +1231,7 @@ function CommunityStatsBar() {
         }}>
           <div style={{ fontSize: 24, marginBottom: 6 }}>{s.icon}</div>
           <div style={{ color: "#4ade80", fontWeight: 800, fontSize: 20 }}>{s.value}</div>
-          <div style={{ color: "rgba(255,255,255,0.28)", fontSize: 9, letterSpacing: 1.5, fontFamily: "'Space Mono',monospace", marginTop: 4 }}>{s.label}</div>
+          <div style={{ color: "rgba(255,255,255,0.28)", fontSize: 9, letterSpacing: 1.5, fontFamily: "'Poppins',sans-serif", marginTop: 4 }}>{s.label}</div>
         </div>
       ))}
     </div>
@@ -1248,7 +1248,7 @@ function formatFileSize(bytes) {
 
 function makeUploadThumbnail(title = "Uploaded video") {
   const safeTitle = encodeURIComponent(title.slice(0, 40));
-  return `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 360'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop stop-color='%230b1a10'/><stop offset='1' stop-color='%23063a20'/></linearGradient></defs><rect width='640' height='360' fill='url(%23g)'/><circle cx='320' cy='180' r='56' fill='rgba(255,255,255,.10)' stroke='rgba(255,255,255,.35)'/><polygon points='302,152 356,180 302,208' fill='white'/><text x='50%' y='82%' dominant-baseline='middle' text-anchor='middle' fill='rgba(255,255,255,.85)' font-size='24' font-family='Arial, sans-serif'>${safeTitle}</text></svg>`;
+  return `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 360'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop stop-color='%230b1a10'/><stop offset='1' stop-color='%23063a20'/></linearGradient></defs><rect width='640' height='360' fill='url(%23g)'/><circle cx='320' cy='180' r='56' fill='rgba(255,255,255,.10)' stroke='rgba(255,255,255,.35)'/><polygon points='302,152 356,180 302,208' fill='white'/><text x='50%' y='82%' dominant-baseline='middle' text-anchor='middle' fill='rgba(255,255,255,.85)' font-size='24' font-family='Poppins, sans-serif'>${safeTitle}</text></svg>`;
 }
 
 function VideoUploadPanel({ onUpload }) {
@@ -1381,7 +1381,7 @@ function CommunityTab() {
             <span style={{ fontSize: 30 }}>🌐</span>
             <div>
               <h2 style={{ color: "#fff", fontWeight: 800, fontSize: 21, lineHeight: 1 }}>Eco Community Hub</h2>
-              <p style={{ color: "#4ade80", fontSize: 10, fontFamily: "'Space Mono',monospace", letterSpacing: 2.5, marginTop: 5 }}>LEARN · SHARE · INSPIRE</p>
+              <p style={{ color: "#4ade80", fontSize: 10, fontFamily: "'Poppins',sans-serif", letterSpacing: 2.5, marginTop: 5 }}>LEARN · SHARE · INSPIRE</p>
             </div>
           </div>
           <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, lineHeight: 1.9, maxWidth: 560 }}>
@@ -1409,7 +1409,7 @@ function CommunityTab() {
               width: "100%", background: "rgba(255,255,255,0.04)",
               border: "1px solid rgba(255,255,255,0.09)", borderRadius: 12,
               padding: "10px 14px 10px 36px", color: "#fff", fontSize: 12,
-              outline: "none", fontFamily: "'Space Grotesk',sans-serif",
+              outline: "none", fontFamily: "'Poppins',sans-serif",
             }}
           />
         </div>
@@ -1429,7 +1429,7 @@ function CommunityTab() {
         <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={{
           background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)",
           borderRadius: 10, padding: "8px 12px", color: "rgba(255,255,255,0.5)",
-          fontSize: 11, cursor: "pointer", outline: "none", fontFamily: "'Space Mono',monospace",
+          fontSize: 11, cursor: "pointer", outline: "none", fontFamily: "'Poppins',sans-serif",
         }}>
           <option value="newest">Newest</option>
           <option value="popular">Most Viewed</option>
@@ -1439,10 +1439,10 @@ function CommunityTab() {
 
       {/* Results info */}
       <div className="dashboard-results-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ color: "rgba(255,255,255,0.28)", fontSize: 10, fontFamily: "'Space Mono',monospace" }}>
+        <div style={{ color: "rgba(255,255,255,0.28)", fontSize: 10, fontFamily: "'Poppins',sans-serif" }}>
           {filtered.length} video{filtered.length !== 1 ? "s" : ""} found
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "rgba(34,197,94,0.5)", fontSize: 10, fontFamily: "'Space Mono',monospace" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "rgba(34,197,94,0.5)", fontSize: 10, fontFamily: "'Poppins',sans-serif" }}>
           <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#22c55e", animation: "pulseDot 2s infinite" }} />
           Community content updated daily
         </div>
@@ -1456,7 +1456,7 @@ function CommunityTab() {
           ))}
         </div>
       ) : (
-        <div style={{ textAlign: "center", padding: "60px 0", color: "rgba(255,255,255,0.2)", fontSize: 13, fontFamily: "'Space Mono',monospace" }}>
+        <div style={{ textAlign: "center", padding: "60px 0", color: "rgba(255,255,255,0.2)", fontSize: 13, fontFamily: "'Poppins',sans-serif" }}>
           <div style={{ fontSize: 36, marginBottom: 12 }}>🔍</div>
           No videos match your search
         </div>
@@ -1562,8 +1562,7 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
-        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+                *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
         html{scroll-behavior:smooth;}
         body{background:#050b07;overflow-x:hidden;}
         #root{width:100%;max-width:none;margin:0;padding:0;}
@@ -1621,7 +1620,7 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
       {lvlBanner && (
         <div className="dashboard-rank-banner" style={{ position: "fixed", top: 76, left: "50%", zIndex: 9998, background: "linear-gradient(135deg,#052e16,#14532d)", border: "1px solid rgba(34,197,94,0.7)", borderRadius: 16, padding: "14px 36px", textAlign: "center", boxShadow: "0 0 48px rgba(34,197,94,0.35),0 8px 32px rgba(0,0,0,0.6)", animation: "fadeSlideDown 0.4s ease" }}>
           <div style={{ color: "#4ade80", fontWeight: 800, fontSize: 17 }}>🎉 RANK UP — You're now a {lvlTitle}!</div>
-          <div style={{ color: "rgba(134,239,172,0.5)", fontSize: 10, marginTop: 4, fontFamily: "'Space Mono',monospace" }}>{xp.toLocaleString()} TOTAL XP EARNED</div>
+          <div style={{ color: "rgba(134,239,172,0.5)", fontSize: 10, marginTop: 4, fontFamily: "'Poppins',sans-serif" }}>{xp.toLocaleString()} TOTAL XP EARNED</div>
         </div>
       )}
 
@@ -1638,7 +1637,7 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
         {Array.from({ length: 10 }, (_, i) => <line key={`h${i}`} x1="0" y1={`${(i + 1) * 9.09}%`} x2="100%" y2={`${(i + 1) * 9.09}%`} stroke="#22c55e" strokeWidth="0.5" />)}
       </svg>
 
-      <div className="dashboard-shell" style={{ minHeight: "100vh", color: "#fff", fontFamily: "'Space Grotesk',sans-serif", position: "relative", zIndex: 2 }}>
+      <div className="dashboard-shell" style={{ minHeight: "100vh", color: "#fff", fontFamily: "'Poppins',sans-serif", position: "relative", zIndex: 2 }}>
         <div className="dashboard-main" style={{ maxWidth: 1140, margin: "0 auto", padding: "0 24px 64px" }}>
 
           {/* ══ HEADER ══ */}
@@ -1647,7 +1646,7 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
               <div style={{ width: 44, height: 44, borderRadius: 12, background: "linear-gradient(135deg,#052e16,#14532d)", border: "1px solid rgba(34,197,94,0.35)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, animation: "glowPulse 3s infinite" }}>🌿</div>
               <div>
                 <h1 style={{ fontWeight: 800, fontSize: 19, color: "#fff", letterSpacing: -0.5 }}>ECO JOURNEY</h1>
-                <div style={{ color: "rgba(34,197,94,0.45)", fontSize: 8, letterSpacing: 3.5, fontFamily: "'Space Mono',monospace" }}>CARBON TRACKER RPG</div>
+                <div style={{ color: "rgba(34,197,94,0.45)", fontSize: 8, letterSpacing: 3.5, fontFamily: "'Poppins',sans-serif" }}>CARBON TRACKER RPG</div>
               </div>
             </div>
             <div className="dashboard-header-right" style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -1655,16 +1654,16 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
                 <span style={{ fontSize: 18 }}>🔥</span>
                 <div>
                   <div style={{ color: "#fb923c", fontWeight: 800, fontSize: 17, lineHeight: 1 }}>{streak}</div>
-                  <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 7, letterSpacing: 2, fontFamily: "'Space Mono',monospace" }}>DAY STREAK</div>
+                  <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 7, letterSpacing: 2, fontFamily: "'Poppins',sans-serif" }}>DAY STREAK</div>
                 </div>
               </div>
               <TrackingBadge isTracking={isTracking} />
               <div className="dashboard-divider" style={{ width: 1, height: 30, background: "rgba(255,255,255,0.07)" }} />
               <div style={{ textAlign: "right" }}>
                 <div style={{ color: "#86efac", fontWeight: 700, fontSize: 13 }}>{userName}</div>
-                <div style={{ color: rank.color, fontSize: 9, letterSpacing: 1.5, fontFamily: "'Space Mono',monospace" }}>{rank.icon} {rank.title.toUpperCase()}</div>
+                <div style={{ color: rank.color, fontSize: 9, letterSpacing: 1.5, fontFamily: "'Poppins',sans-serif" }}>{rank.icon} {rank.title.toUpperCase()}</div>
               </div>
-              <button onClick={handleLogout} className="logout-btn" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.35)", borderRadius: 10, padding: "8px 16px", fontSize: 10, cursor: "pointer", fontFamily: "'Space Mono',monospace", letterSpacing: 1, transition: "all 0.25s" }}>LOG OUT</button>
+              <button onClick={handleLogout} className="logout-btn" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.35)", borderRadius: 10, padding: "8px 16px", fontSize: 10, cursor: "pointer", fontFamily: "'Poppins',sans-serif", letterSpacing: 1, transition: "all 0.25s" }}>LOG OUT</button>
             </div>
           </header>
 
@@ -1672,7 +1671,7 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
           <div className="dashboard-greeting-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr", gap: 16, marginBottom: 22, animation: "fadeUp 0.5s ease" }}>
             <div style={{ background: "linear-gradient(135deg,rgba(34,197,94,0.08),rgba(16,185,129,0.04))", border: "1px solid rgba(34,197,94,0.14)", borderRadius: 18, padding: "22px 24px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
               <div>
-                <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, fontFamily: "'Space Mono',monospace", letterSpacing: 2, marginBottom: 4 }}>{getGreeting().toUpperCase()}</div>
+                <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, fontFamily: "'Poppins',sans-serif", letterSpacing: 2, marginBottom: 4 }}>{getGreeting().toUpperCase()}</div>
                 <div style={{ color: "#fff", fontWeight: 800, fontSize: 24 }}>Hi, {userName} 👋</div>
               </div>
               <div style={{ marginTop: 16 }}>
@@ -1680,11 +1679,11 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
                   <span style={{ fontSize: 24 }}>{rank.icon}</span>
                   <div>
                     <div style={{ color: rank.color, fontWeight: 700, fontSize: 14 }}>{rank.title}</div>
-                    <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 9, fontFamily: "'Space Mono',monospace" }}>CURRENT RANK</div>
+                    <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 9, fontFamily: "'Poppins',sans-serif" }}>CURRENT RANK</div>
                   </div>
                   <div style={{ marginLeft: "auto", textAlign: "right" }}>
                     <div style={{ color: "#fff", fontWeight: 800, fontSize: 16 }}>{xp.toLocaleString()}</div>
-                    <div style={{ color: "rgba(255,255,255,0.25)", fontSize: 9, fontFamily: "'Space Mono',monospace" }}>TOTAL XP</div>
+                    <div style={{ color: "rgba(255,255,255,0.25)", fontSize: 9, fontFamily: "'Poppins',sans-serif" }}>TOTAL XP</div>
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.03)", borderRadius: 10, padding: "8px 12px" }}>
@@ -1701,21 +1700,21 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
             <PermissionGate onGrant={startTracking} supported={supported} />
           )}
           {permissionDenied && (
-            <div style={{ display: "flex", alignItems: "center", gap: 12, background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 14, padding: "14px 18px", marginBottom: 20, color: "#f87171", fontSize: 12, fontFamily: "'Space Mono',monospace" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 14, padding: "14px 18px", marginBottom: 20, color: "#f87171", fontSize: 12, fontFamily: "'Poppins',sans-serif" }}>
               <span>⚠</span>
               <span>Location denied. Go to browser settings → Site permissions → Location → Allow for this site.</span>
             </div>
           )}
 
           {motionPermission !== "granted" && isTracking && (
-            <div className="dashboard-mobile-wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(59,130,246,0.07)", border: "1px solid rgba(59,130,246,0.2)", borderRadius: 14, padding: "14px 18px", marginBottom: 20, color: "#60a5fa", fontSize: 12, fontFamily: "'Space Mono',monospace" }}>
+            <div className="dashboard-mobile-wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(59,130,246,0.07)", border: "1px solid rgba(59,130,246,0.2)", borderRadius: 14, padding: "14px 18px", marginBottom: 20, color: "#60a5fa", fontSize: 12, fontFamily: "'Poppins',sans-serif" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <span>🦶</span>
                 <span>Motion sensors are paused by the browser. Tap "Activate" to start step counting.</span>
               </div>
               <button
                 onClick={() => enableMotionTracking(true)}
-                style={{ background: "#3b82f6", border: "none", color: "#fff", padding: "6px 14px", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "'Space Grotesk',sans-serif" }}
+                style={{ background: "#3b82f6", border: "none", color: "#fff", padding: "6px 14px", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "'Poppins',sans-serif" }}
               >
                 ACTIVATE
               </button>
@@ -1728,26 +1727,26 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
               <XPRing xp={xp} rank={rank} />
               {(() => {
                 const next = RANK_TIERS.find(r => r.min > carbon);
-                if (!next) return <div style={{ color: "rgba(255,255,255,0.25)", fontSize: 10, textAlign: "center", fontFamily: "'Space Mono',monospace" }}>MAX RANK 🌍</div>;
+                if (!next) return <div style={{ color: "rgba(255,255,255,0.25)", fontSize: 10, textAlign: "center", fontFamily: "'Poppins',sans-serif" }}>MAX RANK 🌍</div>;
                 const pct = Math.min((carbon / next.min) * 100, 100);
                 return (
                   <div style={{ width: "100%" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                      <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 9, fontFamily: "'Space Mono',monospace", letterSpacing: 1.5 }}>NEXT RANK</span>
-                      <span style={{ color: next.color, fontSize: 10, fontWeight: 700, fontFamily: "'Space Mono',monospace" }}>{pct.toFixed(1)}%</span>
+                      <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 9, fontFamily: "'Poppins',sans-serif", letterSpacing: 1.5 }}>NEXT RANK</span>
+                      <span style={{ color: next.color, fontSize: 10, fontWeight: 700, fontFamily: "'Poppins',sans-serif" }}>{pct.toFixed(1)}%</span>
                     </div>
                     <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 99, overflow: "hidden" }}>
                       <div style={{ height: "100%", width: `${pct}%`, borderRadius: 99, background: `linear-gradient(90deg,${next.color},${next.color}cc)`, boxShadow: `0 0 6px ${next.color}55`, transition: "width 1s ease" }} />
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", marginTop: 5 }}>
-                      <span style={{ color: rank.color, fontSize: 8, fontFamily: "'Space Mono',monospace" }}>{rank.icon} {rank.title}</span>
-                      <span style={{ color: next.color, fontSize: 8, fontFamily: "'Space Mono',monospace" }}>{next.icon} {next.title}</span>
+                      <span style={{ color: rank.color, fontSize: 8, fontFamily: "'Poppins',sans-serif" }}>{rank.icon} {rank.title}</span>
+                      <span style={{ color: next.color, fontSize: 8, fontFamily: "'Poppins',sans-serif" }}>{next.icon} {next.title}</span>
                     </div>
                   </div>
                 );
               })()}
               <div style={{ width: "100%", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 16 }}>
-                <div style={{ color: "rgba(255,255,255,0.2)", fontSize: 8, letterSpacing: 3, fontFamily: "'Space Mono',monospace", textAlign: "center", marginBottom: 10 }}>MISSIONS TODAY</div>
+                <div style={{ color: "rgba(255,255,255,0.2)", fontSize: 8, letterSpacing: 3, fontFamily: "'Poppins',sans-serif", textAlign: "center", marginBottom: 10 }}>MISSIONS TODAY</div>
                 <div style={{ textAlign: "center" }}>
                   <span style={{ color: "#fff", fontWeight: 800, fontSize: 24 }}>{doneMissions}</span>
                   <span style={{ color: "rgba(255,255,255,0.25)", fontSize: 14 }}> / {DAILY_GOALS.length}</span>
@@ -1786,7 +1785,7 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
                     background: "linear-gradient(135deg,#22c55e,#16a34a)",
                     borderRadius: 99, padding: "1px 6px",
                     fontSize: 7, fontWeight: 800, color: "#fff",
-                    fontFamily: "'Space Mono',monospace",
+                    fontFamily: "'Poppins',sans-serif",
                     boxShadow: "0 0 8px rgba(34,197,94,0.6)",
                   }}>{t.badge}</span>
                 )}
@@ -1805,13 +1804,13 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 8, padding: "4px 10px" }}>
                     <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#22c55e", animation: "pulseDot 2s infinite" }} />
-                    <span style={{ color: "#4ade80", fontSize: 9, fontFamily: "'Space Mono',monospace" }}>LIVE</span>
+                    <span style={{ color: "#4ade80", fontSize: 9, fontFamily: "'Poppins',sans-serif" }}>LIVE</span>
                   </div>
                 </div>
                 <HourlyChart history={hourlyHistory} currentCarbon={carbon} />
                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-                  <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 10, fontFamily: "'Space Mono',monospace" }}>🔒 All data stored locally on your device</div>
-                  <div style={{ color: "rgba(34,197,94,0.5)", fontSize: 10, fontFamily: "'Space Mono',monospace" }}>Auto-saved every 10s</div>
+                  <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 10, fontFamily: "'Poppins',sans-serif" }}>🔒 All data stored locally on your device</div>
+                  <div style={{ color: "rgba(34,197,94,0.5)", fontSize: 10, fontFamily: "'Poppins',sans-serif" }}>Auto-saved every 10s</div>
                 </div>
               </div>
 
@@ -1820,7 +1819,7 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
                   <span style={{ fontSize: 15 }}>🏆</span>
                   <span style={{ color: "rgba(255,255,255,0.85)", fontWeight: 700, fontSize: 13 }}>Daily Missions</span>
                   <div style={{ marginLeft: "auto", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 8, padding: "3px 10px" }}>
-                    <span style={{ color: "#4ade80", fontSize: 10, fontFamily: "'Space Mono',monospace" }}>{doneMissions}/{DAILY_GOALS.length} DONE</span>
+                    <span style={{ color: "#4ade80", fontSize: 10, fontFamily: "'Poppins',sans-serif" }}>{doneMissions}/{DAILY_GOALS.length} DONE</span>
                   </div>
                 </div>
                 <div className="dashboard-mission-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
@@ -1848,7 +1847,7 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
                     <div key={i} style={{ background: `${item.color}09`, border: `1px solid ${item.color}20`, borderRadius: 14, padding: "20px 16px", textAlign: "center" }}>
                       <div style={{ fontSize: 30, marginBottom: 10 }}>{item.icon}</div>
                       <div style={{ color: item.color, fontWeight: 800, fontSize: 24 }}>{item.value}</div>
-                      <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, fontFamily: "'Space Mono',monospace", margin: "4px 0 8px" }}>{item.unit}</div>
+                      <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, fontFamily: "'Poppins',sans-serif", margin: "4px 0 8px" }}>{item.unit}</div>
                       <div style={{ color: "rgba(255,255,255,0.25)", fontSize: 10, lineHeight: 1.5 }}>{item.desc}</div>
                     </div>
                   ))}
@@ -1893,7 +1892,7 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
                       <div key={i} style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${s.color}20`, borderRadius: 14, padding: "18px 16px", textAlign: "center" }}>
                         <div style={{ fontSize: 22, marginBottom: 6 }}>{s.icon}</div>
                         <div style={{ color: s.color, fontWeight: 800, fontSize: 17 }}>{s.value}</div>
-                        <div style={{ color: "rgba(255,255,255,0.28)", fontSize: 9, letterSpacing: 1.5, fontFamily: "'Space Mono',monospace", marginTop: 4 }}>{s.label}</div>
+                        <div style={{ color: "rgba(255,255,255,0.28)", fontSize: 9, letterSpacing: 1.5, fontFamily: "'Poppins',sans-serif", marginTop: 4 }}>{s.label}</div>
                       </div>
                     ))}
                   </div>
@@ -1923,4 +1922,5 @@ export default function Dashboard({ userEmail: emailProp = null, onLogout }) {
     </>
   );
 }
+
 

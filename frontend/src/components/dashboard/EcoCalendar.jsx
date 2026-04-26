@@ -1,3 +1,6 @@
+import { MdChevronLeft, MdChevronRight } from 'react-icons/md';
+import './Dashboard.css';
+
 const DAY_HEADERS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 function EcoCalendar({ onDayClick, activeDays = new Set(), recordsByDay = {} }) {
@@ -10,52 +13,68 @@ function EcoCalendar({ onDayClick, activeDays = new Set(), recordsByDay = {} }) 
   const totalDays = new Date(year, month + 1, 0).getDate();
   const slots = Array.from({ length: 42 }, (_, i) => i - first + 1);
 
+  const getDayStatus = (day) => {
+    const record = recordsByDay[day];
+    if (!record) return null;
+    const carbon = record.carbon_emission || 0;
+    if (carbon < 0.2) return 'green';
+    if (carbon < 0.5) return 'amber';
+    return 'red';
+  };
+
   return (
-    <section className="card-white" style={{ padding: 20 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h3 style={{ color: 'var(--forest)', fontSize: 20 }}>Eco Calendar</h3>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button type="button" className="mini-btn" aria-label="Previous month">?</button>
-          <strong style={{ color: 'var(--gray-600)' }}>
-            {new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(now)}
-          </strong>
-          <button type="button" className="mini-btn" aria-label="Next month">?</button>
+    <section className="calendar-card">
+      <header className="calendar-header">
+        <h3 className="calendar-title">Eco Calendar</h3>
+        <div className="calendar-nav">
+          <button className="nav-btn"><MdChevronLeft /></button>
+          <span style={{ fontWeight: 700, minWidth: '100px', textAlign: 'center' }}>
+            {new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' }).format(now)}
+          </span>
+          <button className="nav-btn"><MdChevronRight /></button>
         </div>
-      </div>
+      </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8, marginBottom: 8 }}>
-        {DAY_HEADERS.map((day) => (
-          <div key={day} style={{ textAlign: 'center', color: 'var(--gray-600)', fontSize: 12, fontWeight: 700 }}>
-            {day}
-          </div>
+      <div className="calendar-grid">
+        {DAY_HEADERS.map(day => (
+          <div key={day} className="day-label">{day}</div>
         ))}
-      </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8 }}>
         {slots.map((day, idx) => {
-          const out = day < 1 || day > totalDays;
-          if (out) {
-            return <div key={idx} style={{ height: 36 }} />;
-          }
+          const isCurrentMonth = day >= 1 && day <= totalDays;
+          if (!isCurrentMonth) return <div key={idx} />;
 
-          const hasData = activeDays.has(day);
-          const classes = ['cal-day'];
-          if (hasData) classes.push('has-data');
-          if (day === currentDay) classes.push('today');
+          const status = getDayStatus(day);
+          const isToday = day === currentDay;
 
           return (
-            <button
-              key={idx}
-              type="button"
-              className={classes.join(' ')}
-              onClick={() => onDayClick?.({ day, record: recordsByDay[day] || null })}
-              aria-label={`Day ${day}`}
+            <button 
+              key={idx} 
+              className={`date-cell ${isToday ? 'today' : ''}`}
+              onClick={() => onDayClick?.(day)}
             >
               {day}
+              {status && (
+                <div className="dot-row">
+                  <div className={`dot dot-${status}`} />
+                </div>
+              )}
             </button>
           );
         })}
       </div>
+
+      <footer className="calendar-legend">
+        <div className="legend-item">
+          <div className="legend-dot dot-green" /> Good
+        </div>
+        <div className="legend-item">
+          <div className="legend-dot dot-amber" /> Moderate
+        </div>
+        <div className="legend-item">
+          <div className="legend-dot dot-red" /> High CO₂
+        </div>
+      </footer>
     </section>
   );
 }

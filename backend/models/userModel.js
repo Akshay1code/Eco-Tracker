@@ -63,6 +63,8 @@ function sanitizeUserDocument(document) {
         ? document.levelProgressPct
         : buildProgressionSnapshot(document.score).levelProgressPct,
     badges: Array.isArray(document.badges) ? document.badges : [],
+    goals: Array.isArray(document.goals) ? document.goals : [],
+    journal: Array.isArray(document.journal) ? document.journal : [],
     settings: normalizeUserSettings(document.settings),
     createdAt: document.createdAt,
     updatedAt: document.updatedAt,
@@ -155,6 +157,8 @@ export async function createUser(userData) {
     level: progression.level,
     levelProgressPct: progression.levelProgressPct,
     badges: progression.badges,
+    goals: Array.isArray(userData.goals) ? userData.goals : [],
+    journal: Array.isArray(userData.journal) ? userData.journal : [],
     settings: normalizeUserSettings(userData.settings),
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -257,6 +261,24 @@ export async function updateUserProfileSettings(userId, profileData = {}) {
     settings: nextSettings,
     updatedAt: timestamp,
   };
+}
+
+export async function saveUserGoals(userId, goals = []) {
+  const timestamp = new Date().toISOString();
+  await getUsersCollection().updateOne(
+    { emailKey: normalizeLookupValue(userId) },
+    { $set: { goals, updatedAt: timestamp } }
+  );
+  return goals;
+}
+
+export async function saveUserJournal(userId, journal = []) {
+  const timestamp = new Date().toISOString();
+  await getUsersCollection().updateOne(
+    { emailKey: normalizeLookupValue(userId) },
+    { $set: { journal, updatedAt: timestamp } }
+  );
+  return journal;
 }
 
 export function isDuplicateUserError(error) {

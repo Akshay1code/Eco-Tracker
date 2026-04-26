@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Poppins:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap');
 
 .auth-layout {
   display: grid;
@@ -70,7 +70,7 @@
 
 .auth-brand-hero h1 {
   color: #fff;
-  font-family: 'Syne', sans-serif;
+  font-family: 'Poppins', sans-serif;
   font-size: clamp(2.5rem, 3vw, 3.4rem);
   font-weight: 800;
   line-height: 1;
@@ -1047,7 +1047,7 @@
   top: 4%;
   left: 2%;
   max-width: min(300px, 58%);
-  font-family: 'Nunito', sans-serif;
+  font-family: 'Poppins', sans-serif;
 }
 
 .auth-earth-mascot--signup-flow .earth-speech-cloud--signup {
@@ -1142,7 +1142,7 @@
 }
 
 .auth-logo-block h1 {
-  font-family: 'Syne', sans-serif;
+  font-family: 'Poppins', sans-serif;
   font-size: 28px;
   font-weight: 800;
   color: #fff;
@@ -1175,7 +1175,7 @@
 
 .auth-headline-block h2 {
   margin-top: 14px;
-  font-family: 'Syne', sans-serif;
+  font-family: 'Poppins', sans-serif;
   font-weight: 800;
   font-size: 38px;
   line-height: 1.15;
@@ -1203,7 +1203,7 @@
 .auth-stat strong {
   display: block;
   color: #fff;
-  font-family: 'Syne', sans-serif;
+  font-family: 'Poppins', sans-serif;
   font-size: 22px;
   font-weight: 700;
   line-height: 1;
@@ -1334,7 +1334,7 @@
 
 .auth-header h2 {
   color: #0f1a14;
-  font-family: 'Syne', sans-serif;
+  font-family: 'Poppins', sans-serif;
   font-weight: 800;
   font-size: clamp(1.6rem, 1.2rem + 1vw, 28px);
   line-height: 1.15;
@@ -1564,7 +1564,7 @@
   border: none;
   border-radius: 14px;
   padding: 14px;
-  font-family: 'Syne', sans-serif;
+  font-family: 'Poppins', sans-serif;
   font-size: 15px;
   font-weight: 700;
   color: #fff;
@@ -2843,7 +2843,7 @@
 
 .eco-signup-brand-name {
   color: #ffffff;
-  font-family: 'Nunito', sans-serif;
+  font-family: 'Poppins', sans-serif;
   font-size: clamp(1.8rem, 2vw, 2.4rem);
   font-weight: 900;
   line-height: 1;
@@ -2897,7 +2897,7 @@
 
 .terra-bubble-text {
   fill: #11382b;
-  font-family: 'Nunito', sans-serif;
+  font-family: 'Poppins', sans-serif;
   font-size: 17px;
   font-weight: 800;
 }
@@ -3070,7 +3070,7 @@
 }
 
 .eco-signup-progress-copy span {
-  font-family: 'Nunito', sans-serif;
+  font-family: 'Poppins', sans-serif;
   font-weight: 800;
 }
 
@@ -3240,7 +3240,7 @@
 .eco-signup-step-header h2,
 .eco-signup-success h2 {
   color: #0f1a0f;
-  font-family: 'Nunito', sans-serif;
+  font-family: 'Poppins', sans-serif;
   font-size: clamp(2rem, 4vw, 2.65rem);
   font-weight: 900;
   line-height: 1.05;
@@ -3279,7 +3279,7 @@
 
 .eco-signup-field label {
   color: #213125;
-  font-family: 'Nunito', sans-serif;
+  font-family: 'Poppins', sans-serif;
   font-size: 1rem;
   font-weight: 800;
 }
@@ -3512,7 +3512,7 @@
 
 .eco-signup-summary-chip strong {
   color: #213125;
-  font-family: 'Nunito', sans-serif;
+  font-family: 'Poppins', sans-serif;
   font-size: 1.1rem;
 }
 
@@ -3846,3 +3846,4 @@
     grid-template-columns: 1fr;
   }
 }
+

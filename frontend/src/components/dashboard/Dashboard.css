@@ -14,7 +14,7 @@
   min-height: 100vh;
   background-color: var(--bg-color);
   color: var(--text-main);
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: 'Poppins', sans-serif;
   position: relative;
   overflow-x: hidden;
   padding: 2rem;
@@ -205,4 +205,141 @@
 @keyframes xp-rise {
   0% { opacity: 1; transform: translateY(0) scale(1); }
   100% { opacity: 0; transform: translateY(-40px) scale(1.5); }
+}
+
+/* Eco Calendar Styles */
+.calendar-card {
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 1.5rem;
+  box-shadow: 0 10px 25px rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(167, 243, 208, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.calendar-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--forest-green);
+}
+
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.nav-btn {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--leaf-green);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: bold;
+}
+
+.nav-btn:hover {
+  background: var(--mint-green);
+  border-color: var(--leaf-green);
+  color: var(--forest-green);
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+}
+
+.day-label {
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.date-cell {
+  aspect-ratio: 1;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.875rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.date-cell:hover {
+  background: var(--mint-green);
+  transform: scale(1.05);
+}
+
+.date-cell.today {
+  background: var(--forest-green);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(20, 83, 45, 0.2);
+}
+
+.date-cell.today .dot {
+  background: #ffffff !important;
+}
+
+.dot-row {
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+  position: absolute;
+  bottom: 6px;
+}
+
+.dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+}
+
+.dot-green { background: #22c55e; }
+.dot-amber { background: #f59e0b; }
+.dot-red { background: #ef4444; }
+
+.calendar-legend {
+  display: flex;
+  justify-content: center;
+  gap: 1.25rem;
+  margin-top: 0.5rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.legend-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
 }

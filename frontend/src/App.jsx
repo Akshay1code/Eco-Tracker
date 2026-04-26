@@ -6,7 +6,7 @@ import ActivityView from './views/ActivityView.jsx';
 import CommunityView from './views/CommunityView.jsx';
 import JournalView from './views/JournalView.jsx';
 import GoalsView from './views/GoalsView.jsx';
-import SettingsView from './views/SettingsView.jsx';
+import Profile from './views/Profile.jsx';
 import CalModal from './components/modals/CalModal.jsx';
 import ProfileModal from './components/modals/ProfileModal.jsx';
 import LoginPage from './pages/LoginPage.jsx';
@@ -69,7 +69,7 @@ function App() {
     community: { onUserClick: setProfileModal, onLogout: handleLogout },
     journal: { onLogout: handleLogout },
     goals: { onLogout: handleLogout },
-    settings: { onLogout: handleLogout },
+    profile: { onLogout: handleLogout },
   };
 
   const viewMap = useMemo(
@@ -79,12 +79,20 @@ function App() {
       community: CommunityView,
       journal: JournalView,
       goals: GoalsView,
-      settings: SettingsView,
+      profile: Profile,
     }),
     []
   );
 
   const ActiveView = viewMap[activeTab] || DashboardView;
+  const storedUserName = typeof window !== 'undefined' ? localStorage.getItem('userName') : '';
+  const sidebarUserName = storedUserName && storedUserName.trim() ? storedUserName.trim() : 'Eco Explorer';
+  const sidebarInitials = sidebarUserName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || '')
+    .join('') || 'EE';
 
   if (screen === 'login') {
     return (
@@ -128,7 +136,13 @@ function App() {
     <div className="app-shell-wrap">
       <FloatingLeaves />
       <div className="app-shell">
-        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+        <Sidebar
+          activeItem={activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+          userName={sidebarUserName}
+          userInitials={sidebarInitials}
+          dailyFootprint={0.41}
+          onNavigate={(item) => setActiveTab(item.key)}
+        />
         <main className="app-main">
           <div key={activeTab} className="view-enter">
             <ActiveView activeTab={activeTab} {...viewProps[activeTab]} />

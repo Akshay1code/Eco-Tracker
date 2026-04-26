@@ -1,664 +1,407 @@
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
-const PALETTES = [
+const TIERS = [
   {
-    score: 0,
-    name: 'Pure Green',
-    label: 'Excellent Leaf',
-    accent: 'Calm flow',
-    base: '#16a34a',
-    glow: 'rgba(34,197,94,0.6)',
-    glass: 'rgba(187,247,208,0.25)',
+    key: 'mint',
+    min: 0,
+    max: 2,
+    icon: '🌿',
+    title: 'Well done, champ!',
+    body: "You're building a consistently low carbon footprint. The planet is grateful for every mindful choice you make.",
+    light: '#a8f0b8',
+    dark: '#3dcc6a',
+    shadow: 'rgba(61,204,106,0.40)',
+    corner: 'rgba(168,240,184,0.56)',
+    panel: 'rgba(168,240,184,0.22)',
+    badge: 'rgba(61,204,106,0.18)',
+    titleColor: '#1f7a3f',
+    bodyColor: '#3d7a53',
   },
   {
-    score: 1.5,
-    name: 'Light Green',
-    label: 'Healthy Path',
-    accent: 'Stable pace',
-    base: '#65a30d',
-    glow: 'rgba(132,204,22,0.5)',
-    glass: 'rgba(217,249,157,0.2)',
+    key: 'lime',
+    min: 2.01,
+    max: 4,
+    icon: '🌱',
+    title: 'Great going!',
+    body: "Your footprint is light and improving. Keep building those eco habits — you're making a real difference.",
+    light: '#d4f57a',
+    dark: '#9ddb20',
+    shadow: 'rgba(140,210,30,0.38)',
+    corner: 'rgba(212,245,122,0.56)',
+    panel: 'rgba(212,245,122,0.22)',
+    badge: 'rgba(157,219,32,0.18)',
+    titleColor: '#5e7d08',
+    bodyColor: '#6f821f',
   },
   {
-    score: 3.5,
-    name: 'Yellow',
-    label: 'Average \u26A1',
-    accent: 'Needs tuning',
-    base: '#ca8a04',
-    glow: 'rgba(234,179,8,0.55)',
-    glass: 'rgba(254,240,138,0.2)',
+    key: 'amber',
+    min: 4.01,
+    max: 6.01,
+    icon: '🌤',
+    title: 'On the edge.',
+    body: 'A few mindful daily swaps could shift your score into the green. Small choices carry outsized impact.',
+    light: '#ffe27a',
+    dark: '#f5a623',
+    shadow: 'rgba(245,166,35,0.38)',
+    corner: 'rgba(255,226,122,0.56)',
+    panel: 'rgba(255,226,122,0.22)',
+    badge: 'rgba(245,166,35,0.18)',
+    titleColor: '#9a5a06',
+    bodyColor: '#a36a1b',
   },
   {
-    score: 5.5,
-    name: 'Orange',
-    label: 'Elevated Heat',
-    accent: 'Trim impact',
-    base: '#ea580c',
-    glow: 'rgba(249,115,22,0.6)',
-    glass: 'rgba(254,215,170,0.2)',
+    key: 'orange',
+    min: 6.02,
+    max: 8,
+    icon: '🔶',
+    title: 'Time to act.',
+    body: 'Your footprint is climbing. Small daily changes add up fast — now is the moment to course-correct.',
+    light: '#ffb07a',
+    dark: '#f5621a',
+    shadow: 'rgba(245,98,26,0.38)',
+    corner: 'rgba(255,176,122,0.56)',
+    panel: 'rgba(255,176,122,0.22)',
+    badge: 'rgba(245,98,26,0.18)',
+    titleColor: '#a94812',
+    bodyColor: '#a85f34',
   },
   {
-    score: 7,
-    name: 'Red',
-    label: 'Warning Zone',
-    accent: 'Act now',
-    base: '#dc2626',
-    glow: 'rgba(239,68,68,0.65)',
-    glass: 'rgba(254,202,202,0.2)',
-  },
-  {
-    score: 9,
-    name: 'Critical Black',
-    label: 'Critical Burn',
-    accent: 'Urgent reduction',
-    base: '#1c1c1e',
-    glow: 'rgba(100,0,0,0.7)',
-    glass: 'rgba(50,0,0,0.15)',
-  },
-  {
-    score: 10,
-    name: 'Critical Black',
-    label: 'Critical Burn',
-    accent: 'Urgent reduction',
-    base: '#1c1c1e',
-    glow: 'rgba(100,0,0,0.7)',
-    glass: 'rgba(50,0,0,0.15)',
+    key: 'coral',
+    min: 8.01,
+    max: 10,
+    icon: '🔴',
+    title: 'High impact alert!',
+    body: "Your carbon footprint needs urgent attention. Every step toward change counts — let's turn this around together.",
+    light: '#ff9090',
+    dark: '#d42020',
+    shadow: 'rgba(212,32,32,0.38)',
+    corner: 'rgba(255,144,144,0.56)',
+    panel: 'rgba(255,144,144,0.22)',
+    badge: 'rgba(212,32,32,0.18)',
+    titleColor: '#9d1818',
+    bodyColor: '#a74343',
   },
 ];
 
 function clampScore(score) {
-  return Math.max(0, Math.min(10, Number.isFinite(score) ? score : 5));
-}
-
-function hexToRgb(hex) {
-  const normalized = hex.replace('#', '');
-  const value = normalized.length === 3
-    ? normalized.split('').map((char) => char + char).join('')
-    : normalized;
-
-  return {
-    r: Number.parseInt(value.slice(0, 2), 16),
-    g: Number.parseInt(value.slice(2, 4), 16),
-    b: Number.parseInt(value.slice(4, 6), 16),
-  };
-}
-
-function parseColor(color) {
-  if (color.startsWith('#')) {
-    const { r, g, b } = hexToRgb(color);
-    return { r, g, b, a: 1 };
+  if (!Number.isFinite(score)) {
+    return 0;
   }
 
-  const values = color.match(/[\d.]+/g)?.map(Number) ?? [0, 0, 0, 1];
-  return {
-    r: values[0] ?? 0,
-    g: values[1] ?? 0,
-    b: values[2] ?? 0,
-    a: values[3] ?? 1,
-  };
+  return Math.max(0, Math.min(10, score));
 }
 
-function lerp(start, end, amount) {
-  return start + (end - start) * amount;
-}
-
-function mixColor(from, to, amount, withAlpha = false) {
-  const left = parseColor(from);
-  const right = parseColor(to);
-  const r = Math.round(lerp(left.r, right.r, amount));
-  const g = Math.round(lerp(left.g, right.g, amount));
-  const b = Math.round(lerp(left.b, right.b, amount));
-
-  if (withAlpha) {
-    const a = Number(lerp(left.a, right.a, amount).toFixed(3));
-    return `rgba(${r}, ${g}, ${b}, ${a})`;
-  }
-
-  return `rgb(${r}, ${g}, ${b})`;
-}
-
-function withAlpha(color, alpha) {
-  const { r, g, b } = parseColor(color);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
-function lighten(color, amount) {
-  return mixColor(color, '#ffffff', amount, false);
-}
-
-function darken(color, amount) {
-  return mixColor(color, '#050505', amount, false);
-}
-
-function getPalette(score) {
+function getTier(score) {
   const safeScore = clampScore(score);
-
-  for (let index = 0; index < PALETTES.length - 1; index += 1) {
-    const current = PALETTES[index];
-    const next = PALETTES[index + 1];
-
-    if (safeScore >= current.score && safeScore <= next.score) {
-      const amount = next.score === current.score
-        ? 0
-        : (safeScore - current.score) / (next.score - current.score);
-
-      return {
-        score: safeScore,
-        name: amount < 0.5 ? current.name : next.name,
-        label: amount < 0.5 ? current.label : next.label,
-        accent: amount < 0.5 ? current.accent : next.accent,
-        base: mixColor(current.base, next.base, amount, false),
-        glow: mixColor(current.glow, next.glow, amount, true),
-        glass: mixColor(current.glass, next.glass, amount, true),
-      };
-    }
-  }
-
-  const fallback = PALETTES[PALETTES.length - 1];
-  return {
-    score: safeScore,
-    name: fallback.name,
-    label: fallback.label,
-    accent: fallback.accent,
-    base: fallback.base,
-    glow: fallback.glow,
-    glass: fallback.glass,
-  };
+  return TIERS.find((tier) => safeScore >= tier.min && safeScore <= tier.max) ?? TIERS[TIERS.length - 1];
 }
 
-// Main component: glassmorphic 3D carbon footprint hero visual.
-function CarbonFootprint({
-  score = 5,
-  animated = true,
-  showControls = true,
-  size = 280,
-}) {
-  const [currentScore, setCurrentScore] = useState(clampScore(score));
-  const [isRippling, setIsRippling] = useState(false);
-  const svgId = useId().replace(/:/g, '');
+function CarbonFootprint({ score = 0, showControls = true }) {
+  const currentScore = clampScore(score);
+  const [floatActive, setFloatActive] = useState(true);
+  const floatResetRef = useRef(null);
+  const tierRef = useRef(getTier(score).key);
+  const uid = useId().replace(/:/g, '');
+
+  const tier = useMemo(() => getTier(currentScore), [currentScore]);
+  const scoreText = currentScore.toFixed(2);
 
   useEffect(() => {
-    setCurrentScore(clampScore(score));
-  }, [score]);
+    if (tierRef.current === tier.key) {
+      return undefined;
+    }
 
-  useEffect(() => {
-    setIsRippling(true);
-    const timeoutId = window.setTimeout(() => setIsRippling(false), 520);
-    return () => window.clearTimeout(timeoutId);
-  }, [currentScore]);
+    tierRef.current = tier.key;
+    setFloatActive(false);
 
-  const palette = useMemo(() => getPalette(currentScore), [currentScore]);
+    const restartId = window.setTimeout(() => {
+      setFloatActive(true);
+    }, 10);
 
-  const derived = useMemo(() => {
-    const baseColor = palette.base;
-    const brightCore = lighten(baseColor, 0.4);
-    const brightEdge = lighten(baseColor, 0.16);
-    const darkEdge = darken(baseColor, 0.45);
-    const deepShadow = darken(baseColor, 0.72);
-    const trackFill = withAlpha(baseColor, 0.2);
-    const panelTint = withAlpha(baseColor, 0.06);
-    const sliderFill = `linear-gradient(90deg, ${lighten(baseColor, 0.25)} 0%, ${baseColor} 55%, ${darkEdge} 100%)`;
+    floatResetRef.current = restartId;
+    return () => window.clearTimeout(restartId);
+  }, [tier.key]);
 
-    return {
-      baseColor,
-      brightCore,
-      brightEdge,
-      darkEdge,
-      deepShadow,
-      trackFill,
-      panelTint,
-      sliderFill,
-      textStrong: currentScore >= 8.5 ? '#f8d7d7' : '#effff3',
-      textSoft: currentScore >= 8.5 ? 'rgba(255,223,223,0.76)' : 'rgba(240,255,246,0.74)',
-      toeShadow: withAlpha(deepShadow, 0.44),
-      toeHighlight: withAlpha('#ffffff', 0.82),
-      occlusion: withAlpha('#090909', 0.24),
-    };
-  }, [currentScore, palette]);
-
-  const ids = {
-    footGradient: `cfp-foot-${svgId}`,
-    glowGradient: `cfp-glow-${svgId}`,
-    footShadow: `cfp-shadow-${svgId}`,
-  };
-
-  const showGlowPulse = animated && currentScore <= 2;
-  const showWarningPulse = animated && currentScore >= 8;
-  const wrapperClassName = [
-    'cfp-shell',
-    showGlowPulse ? 'cfp-shell--glow' : '',
-    showWarningPulse ? 'cfp-shell--warning' : '',
-  ].filter(Boolean).join(' ');
-  const svgClassName = [
-    'cfp-visual',
-    animated ? 'cfp-visual--animated' : '',
-    isRippling ? 'cfp-visual--ripple' : '',
-  ].filter(Boolean).join(' ');
+  useEffect(() => () => {
+    if (floatResetRef.current) {
+      window.clearTimeout(floatResetRef.current);
+    }
+  }, []);
 
   return (
     <div
-      className={wrapperClassName}
+      className="carbon-indicator"
       style={{
-        '--cfp-base': derived.baseColor,
-        '--cfp-glow': palette.glow,
-        '--cfp-glass': palette.glass,
-        '--cfp-soft': derived.textSoft,
-        '--cfp-strong': derived.textStrong,
-        '--cfp-track': derived.trackFill,
+        '--cf-light': tier.light,
+        '--cf-dark': tier.dark,
+        '--cf-shadow': tier.shadow,
+        '--cf-corner': tier.corner,
+        '--cf-panel': tier.panel,
+        '--cf-badge': tier.badge,
+        '--cf-title': tier.titleColor,
+        '--cf-body': tier.bodyColor,
       }}
     >
       <style>
         {`
-          .cfp-shell {
+          .carbon-indicator {
             position: relative;
-            display: grid;
-            gap: 1.1rem;
-            justify-items: center;
-            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-          }
-
-          .cfp-glow-ring {
-            position: absolute;
-            width: 60%;
-            aspect-ratio: 1;
-            border-radius: 999px;
-            top: 18%;
-            left: 50%;
-            transform: translateX(-50%);
-            filter: blur(40px);
-            opacity: 0.3;
-            pointer-events: none;
-            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-          }
-
-          .cfp-card {
-            position: relative;
-            width: min(100%, ${Math.max(size + 36, 300)}px);
-            padding: 1.25rem 1.25rem 1rem;
-            border-radius: 2rem;
-            border: 1px solid rgba(255,255,255,0.18);
-            background:
-              linear-gradient(145deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04)),
-              linear-gradient(180deg, ${derived.panelTint}, transparent 62%),
-              rgba(255,255,255,0.08);
-            backdrop-filter: blur(20px) saturate(180%);
-            -webkit-backdrop-filter: blur(20px) saturate(180%);
-            box-shadow:
-              0 8px 32px ${palette.glow},
-              inset 0 1px 0 rgba(255,255,255,0.2);
+            width: 100%;
+            border-radius: 26px;
+            padding: 28px;
             overflow: hidden;
-            transform-origin: center;
-            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-          }
-
-          .cfp-card::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background:
-              radial-gradient(circle at 24% 18%, rgba(255,255,255,0.18), transparent 32%),
-              linear-gradient(180deg, rgba(255,255,255,0.08), transparent 30%);
-            pointer-events: none;
-          }
-
-          .cfp-visual-wrap {
-            position: relative;
+            background: rgba(255,255,255,0.92);
+            border: 1px solid rgba(255,255,255,0.9);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.10), 0 4px 16px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,1);
             display: grid;
-            place-items: center;
-            min-height: ${size + 28}px;
-            transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
+            gap: 24px 26px;
+            font-family: 'Poppins', sans-serif;
+            isolation: isolate;
           }
 
-          .cfp-card:hover .cfp-visual-wrap {
-            transform: translateY(-4px) scale(1.02);
+          .carbon-indicator * {
+            box-sizing: border-box;
           }
 
-          .cfp-card:hover {
-            box-shadow:
-              0 16px 42px ${withAlpha(palette.glow, 0.92)},
-              inset 0 1px 0 rgba(255,255,255,0.22);
-          }
-
-          .cfp-visual {
-            width: ${size}px;
-            height: auto;
-            display: block;
-            transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1), filter 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-            transform-origin: center;
-            filter: drop-shadow(0 10px 26px ${withAlpha(palette.glow, 0.34)});
-          }
-
-          .cfp-visual--ripple {
-            animation: cfp-ripple 0.52s cubic-bezier(0.22, 1, 0.36, 1);
-          }
-
-          .cfp-shell--glow .cfp-glow-ring {
-            animation: cfp-glow-pulse 2s ease-in-out infinite;
-          }
-
-          .cfp-shell--warning .cfp-card {
-            animation: cfp-warning-pulse 1.5s ease-in-out infinite;
-          }
-
-          .cfp-readout {
+          .carbon-indicator__corner {
             position: absolute;
-            inset: auto 0 0;
-            display: grid;
-            gap: 0.35rem;
-            padding: 0 0.5rem;
-            text-align: center;
+            width: clamp(200px, 24vw, 260px);
+            height: clamp(200px, 24vw, 260px);
             pointer-events: none;
+            transition: background 0.8s ease, opacity 0.8s ease;
+            opacity: 1;
           }
 
-          .cfp-score {
-            color: var(--cfp-strong);
-            font-size: clamp(1.6rem, 2vw, 1.85rem);
-            font-weight: 800;
-            letter-spacing: -0.04em;
-            text-shadow: 0 2px 14px rgba(0,0,0,0.24);
+          .carbon-indicator__corner--tl {
+            top: 0;
+            left: 0;
+            border-radius: 26px 0 86% 0;
+            background: linear-gradient(135deg, var(--cf-corner) 0%, rgba(255,255,255,0) 72%);
           }
 
-          .cfp-label-row {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.55rem;
-            flex-wrap: wrap;
+          .carbon-indicator__corner--tr {
+            top: 0;
+            right: 0;
+            border-radius: 0 26px 0 86%;
+            background: linear-gradient(225deg, var(--cf-corner) 0%, rgba(255,255,255,0) 72%);
           }
 
-          .cfp-label {
-            color: var(--cfp-strong);
-            font-size: 0.92rem;
-            font-weight: 700;
+          .carbon-indicator__corner--bl {
+            bottom: 0;
+            left: 0;
+            border-radius: 0 86% 0 26px;
+            background: linear-gradient(45deg, var(--cf-corner) 0%, rgba(255,255,255,0) 72%);
           }
 
-          .cfp-accent {
-            color: var(--cfp-soft);
-            font-size: 0.74rem;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
+          .carbon-indicator__corner--br {
+            right: 0;
+            bottom: 0;
+            border-radius: 86% 0 26px 0;
+            background: linear-gradient(315deg, var(--cf-corner) 0%, rgba(255,255,255,0) 72%);
           }
 
-          .cfp-caption {
+          .carbon-indicator__column {
             position: relative;
             z-index: 1;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-            margin-top: 0.9rem;
-            color: var(--cfp-soft);
           }
 
-          .cfp-caption strong {
-            display: block;
-            color: var(--cfp-strong);
-            font-size: 0.98rem;
-            margin-bottom: 0.2rem;
+          .carbon-indicator__column--left {
+            display: grid;
+            align-content: center;
+            justify-items: center;
+            min-width: 0;
           }
 
-          .cfp-caption span {
-            font-size: 0.78rem;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
+          .carbon-indicator__foot-wrap {
+            width: min(100%, 250px);
+            display: grid;
+            justify-items: center;
+            filter: drop-shadow(0 22px 34px var(--cf-shadow));
+            transition: filter 0.6s ease;
           }
 
-          .cfp-chip {
-            padding: 0.45rem 0.75rem;
-            border-radius: 999px;
-            border: 1px solid rgba(255,255,255,0.16);
-            background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.06));
-            color: var(--cfp-strong);
-            font-size: 0.72rem;
-            letter-spacing: 0.09em;
-            text-transform: uppercase;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.18);
-          }
-
-          .cfp-controls {
-            width: min(100%, ${Math.max(size + 36, 300)}px);
-            padding: 1rem 1.1rem 1.1rem;
-            border-radius: 1.45rem;
-            border: 1px solid rgba(255,255,255,0.16);
-            background: linear-gradient(180deg, rgba(255,255,255,0.1), rgba(255,255,255,0.06));
-            backdrop-filter: blur(16px) saturate(160%);
-            -webkit-backdrop-filter: blur(16px) saturate(160%);
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.14);
-            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-          }
-
-          .cfp-controls-top {
-            display: flex;
-            align-items: baseline;
-            justify-content: space-between;
-            gap: 0.85rem;
-            margin-bottom: 0.85rem;
-          }
-
-          .cfp-controls-top strong {
-            color: var(--cfp-strong);
-            font-size: 1rem;
-          }
-
-          .cfp-controls-top span {
-            color: var(--cfp-soft);
-            font-size: 0.78rem;
-          }
-
-          .cfp-range {
+          .carbon-indicator__foot {
             width: 100%;
-            appearance: none;
-            height: 10px;
+            height: auto;
+            display: block;
+          }
+
+          .carbon-indicator__score {
+            margin-top: 14px;
+            font-size: clamp(3rem, 5vw, 56px);
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: -3px;
+            color: var(--cf-dark);
+            transition: color 0.6s ease;
+          }
+
+          .carbon-indicator__label {
+            margin-top: 8px;
+            font-size: 11px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: #9ca3af;
+            text-align: center;
+          }
+
+          .carbon-indicator__column--right {
+            display: grid;
+            align-content: center;
+          }
+
+          .carbon-indicator__message {
+            border-radius: 20px;
+            padding: 18px;
+            border: 1px solid rgba(255,255,255,0.6);
+            background: var(--cf-panel);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            box-shadow: 0 16px 34px rgba(255,255,255,0.28), inset 0 1px 0 rgba(255,255,255,0.75);
+            transition: background 0.6s ease, border-color 0.6s ease;
+          }
+
+          .carbon-indicator__message.is-floating {
+            animation: carbonFloat 3.5s ease-in-out infinite;
+          }
+
+          .carbon-indicator__message-head {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 12px;
+          }
+
+          .carbon-indicator__icon-badge {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            display: grid;
+            place-items: center;
+            font-size: 20px;
+            background: var(--cf-badge);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.55);
+            transition: background 0.6s ease;
+            flex-shrink: 0;
+          }
+
+          .carbon-indicator__message-title {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--cf-title);
+            transition: color 0.6s ease;
+          }
+
+          .carbon-indicator__message-body {
+            font-size: 12px;
+            line-height: 1.65;
+            color: var(--cf-body);
+            transition: color 0.6s ease;
+          }
+
+          .carbon-indicator__pill {
+            padding: 8px 12px;
             border-radius: 999px;
-            outline: none;
-            background:
-              linear-gradient(90deg, rgba(255,255,255,0.18), rgba(255,255,255,0.05)),
-              var(--cfp-track);
-            box-shadow: inset 0 1px 4px rgba(0,0,0,0.14);
+            background: var(--cf-badge);
+            color: var(--cf-title);
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            transition: background 0.6s ease, color 0.6s ease;
+            white-space: nowrap;
           }
 
-          .cfp-range::-webkit-slider-runnable-track {
-            height: 10px;
-            border-radius: 999px;
-            background:
-              linear-gradient(90deg, rgba(255,255,255,0.16), rgba(255,255,255,0.03)),
-              var(--cfp-track);
+          @keyframes carbonFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-12px); }
           }
 
-          .cfp-range::-moz-range-track {
-            height: 10px;
-            border-radius: 999px;
-            background:
-              linear-gradient(90deg, rgba(255,255,255,0.16), rgba(255,255,255,0.03)),
-              var(--cfp-track);
-          }
-
-          .cfp-range::-webkit-slider-thumb {
-            appearance: none;
-            width: 24px;
-            height: 24px;
-            margin-top: -7px;
-            border-radius: 50%;
-            border: 2px solid rgba(255,255,255,0.72);
-            background: var(--cfp-base);
-            box-shadow: 0 8px 18px ${palette.glow};
-            cursor: pointer;
-            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-          }
-
-          .cfp-range::-moz-range-thumb {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            border: 2px solid rgba(255,255,255,0.72);
-            background: var(--cfp-base);
-            box-shadow: 0 8px 18px ${palette.glow};
-            cursor: pointer;
-            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-          }
-
-          @keyframes cfp-glow-pulse {
-            0%, 100% { opacity: 0.2; transform: translateX(-50%) scale(0.96); }
-            50% { opacity: 0.5; transform: translateX(-50%) scale(1.08); }
-          }
-
-          @keyframes cfp-warning-pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.02); }
-          }
-
-          @keyframes cfp-ripple {
-            0% { transform: scale(0.96); }
-            64% { transform: scale(1.016); }
-            100% { transform: scale(1); }
-          }
-
-          .cfp-toe {
-            transform-origin: center;
-            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            animation: cfp-float 4s ease-in-out infinite;
-          }
-          .cfp-toe:hover {
-            transform: scale(1.15) translateY(-2px);
-          }
-          .cfp-toe-1 { animation-delay: 0.0s; transform-origin: 67.5px 18px; }
-          .cfp-toe-2 { animation-delay: 0.2s; transform-origin: 48.5px 16px; }
-          .cfp-toe-3 { animation-delay: 0.4s; transform-origin: 31.5px 23.5px; }
-          .cfp-toe-4 { animation-delay: 0.6s; transform-origin: 19px 34px; }
-
-          .cfp-leaf {
-            transform-origin: 37px 54px;
-            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-          }
-          .cfp-leaf:hover {
-            transform: scale(1.03) rotate(1deg);
-          }
-          .cfp-leaf-bottom {
-            transform-origin: 34px 101px;
-          }
-
-          @keyframes cfp-float {
-            0%, 100% { transform: translateY(0) scale(1); }
-            50% { transform: translateY(-3px) scale(1.02); }
-          }
-
-          @media (max-width: 640px) {
-            .cfp-card,
-            .cfp-controls {
-              width: min(100%, 100%);
+          @media (max-width: 960px) {
+            .carbon-indicator {
+              grid-template-columns: 1fr;
+              gap: 22px;
+              padding: 24px 20px;
             }
 
-            .cfp-caption,
-            .cfp-controls-top {
-              flex-direction: column;
-              align-items: flex-start;
-            }
-
-            .cfp-readout {
-              bottom: -0.2rem;
-            }
           }
         `}
       </style>
 
-      {/* Ambient glow behind the glass card */}
-      <div
-        className="cfp-glow-ring"
-        style={{
-          background: `radial-gradient(circle, ${withAlpha(palette.glow, 0.72)} 0%, ${withAlpha(palette.glow, 0.22)} 45%, transparent 74%)`,
-        }}
-      />
+      <div className="carbon-indicator__corner carbon-indicator__corner--tl" />
+      <div className="carbon-indicator__corner carbon-indicator__corner--tr" />
+      <div className="carbon-indicator__corner carbon-indicator__corner--bl" />
+      <div className="carbon-indicator__corner carbon-indicator__corner--br" />
 
-      {/* Main glassmorphic card wrapper */}
-      <div className="cfp-card">
-        <div className="cfp-visual-wrap">
-          {/* Reference-style footprint SVG */}
+      <div className="carbon-indicator__column carbon-indicator__column--left">
+        <div className="carbon-indicator__foot-wrap">
           <svg
-            className={svgClassName}
-            viewBox="0 0 82 150"
+            className="carbon-indicator__foot"
+            viewBox="0 0 240 320"
             role="img"
-            aria-label={`Carbon footprint score ${currentScore.toFixed(1)} out of 10 in ${palette.name} theme`}
+            aria-label={`Carbon footprint score ${scoreText} out of 10`}
           >
             <defs>
-              <filter id={ids.footShadow} x="-25%" y="-15%" width="150%" height="165%">
-                <feDropShadow dx="-2" dy="7" stdDeviation="5" floodColor="rgba(5,75,28,0.32)" />
-              </filter>
-              <linearGradient id={ids.footGradient} x1="8" y1="74" x2="74" y2="78" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stopColor="#07833a" />
-                <stop offset="45%" stopColor="#71be1d" />
-                <stop offset="100%" stopColor="#93cd1d" />
+              <linearGradient id={`foot-base-${uid}`} x1="46" y1="230" x2="188" y2="68" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor={tier.light} />
+                <stop offset="100%" stopColor={tier.dark} />
               </linearGradient>
-              <radialGradient id={ids.glowGradient} cx="50%" cy="42%" r="50%">
-                <stop offset="0%" stopColor="rgba(140, 214, 48, 0.28)" />
-                <stop offset="100%" stopColor="rgba(140, 214, 48, 0)" />
+              <radialGradient id={`foot-depth-${uid}`} cx="46%" cy="44%" r="62%">
+                <stop offset="0%" stopColor="rgba(255,255,255,0.3)" />
+                <stop offset="100%" stopColor="rgba(0,0,0,0.12)" />
               </radialGradient>
+              <linearGradient id={`foot-shine-${uid}`} x1="54" y1="42" x2="170" y2="240" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="rgba(255,255,255,0.55)" />
+                <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+              </linearGradient>
+              <filter id={`foot-shadow-${uid}`} x="-25%" y="-25%" width="160%" height="170%">
+                <feDropShadow dx="0" dy="18" stdDeviation="14" floodColor={tier.shadow} />
+              </filter>
+              <g id={`foot-shape-${uid}`}>
+                <ellipse cx="163" cy="48" rx="16" ry="18" transform="rotate(-12 163 48)" />
+                <ellipse cx="130" cy="40" rx="14" ry="16" transform="rotate(-11 130 40)" />
+                <ellipse cx="99" cy="49" rx="13" ry="15" transform="rotate(-9 99 49)" />
+                <ellipse cx="72" cy="69" rx="11" ry="13" transform="rotate(-6 72 69)" />
+                <ellipse cx="49" cy="96" rx="9" ry="11" transform="rotate(-2 49 96)" />
+                <path d="M152 75C130 74 106 82 86 100C58 126 41 164 40 209C39 242 50 274 71 292C90 309 116 314 136 306C157 298 172 276 173 253C174 228 158 203 143 181C132 165 128 149 133 130C139 109 155 94 160 84C162 80 160 75 152 75Z" />
+              </g>
             </defs>
 
-            <ellipse cx="41" cy="76" rx="34" ry="56" fill={`url(#${ids.glowGradient})`} />
-
-            <g filter={`url(#${ids.footShadow})`}>
-              <ellipse className="cfp-toe cfp-toe-1" cx="67.5" cy="18" rx="14.5" ry="15.5" fill={`url(#${ids.footGradient})`} />
-              <ellipse className="cfp-toe cfp-toe-2" cx="48.5" cy="16" rx="11" ry="13.5" fill={`url(#${ids.footGradient})`} />
-              <ellipse className="cfp-toe cfp-toe-3" cx="31.5" cy="23.5" rx="8.5" ry="11.5" fill={`url(#${ids.footGradient})`} />
-              <ellipse className="cfp-toe cfp-toe-4" cx="19" cy="34" rx="7" ry="9" fill={`url(#${ids.footGradient})`} />
-
-              <path
-                className="cfp-leaf"
-                d="M63 27C34 26 12 48 12 81c0 18 6 35 14 48c8-23 17-37 30-47c8-6 16-18 17-33c1-8-2-16-10-22Z"
-                fill={`url(#${ids.footGradient})`}
-              />
-              <path
-                className="cfp-leaf cfp-leaf-bottom"
-                d="M46 82c-10 9-17 24-22 45c7 12 19 20 33 20c14 0 24-6 24-18c0-9-4-15-11-22c-7-7-13-14-14-25c-1 0-4 0-10 0Z"
-                fill={`url(#${ids.footGradient})`}
-              />
+            <g filter={`url(#foot-shadow-${uid})`}>
+              <g fill={`url(#foot-base-${uid})`}>
+                <use href={`#foot-shape-${uid}`} />
+              </g>
+              <g fill={`url(#foot-depth-${uid})`} opacity="0.92">
+                <use href={`#foot-shape-${uid}`} />
+              </g>
+              <g fill={`url(#foot-shine-${uid})`} opacity="0.4">
+                <use href={`#foot-shape-${uid}`} />
+              </g>
+              <ellipse cx="123" cy="252" rx="29" ry="44" fill="rgba(255,255,255,0.16)" transform="rotate(12 123 252)" />
+              <ellipse cx="121" cy="120" rx="40" ry="28" fill="rgba(255,255,255,0.18)" transform="rotate(-16 121 120)" />
+              <ellipse cx="91" cy="181" rx="18" ry="34" fill="rgba(255,255,255,0.12)" transform="rotate(18 91 181)" />
             </g>
           </svg>
-
-          {/* Floating score overlay */}
-          <div className="cfp-readout">
-            <div className="cfp-score">{currentScore.toFixed(1)} / 10</div>
-            <div className="cfp-label-row">
-              <span className="cfp-label">{palette.label}</span>
-              <span className="cfp-accent">{palette.accent}</span>
-            </div>
-          </div>
         </div>
 
-        {/* Supporting meta line inside the card */}
-        <div className="cfp-caption">
-          <div>
-            <strong>Carbon Footprint Signal</strong>
-            <span>{palette.name} glassmorphic state</span>
+        <div className="carbon-indicator__score">{scoreText}</div>
+        <div className="carbon-indicator__label">Carbon Footprint / 10</div>
+      </div>
+
+      <div className="carbon-indicator__column carbon-indicator__column--right">
+        <div className={`carbon-indicator__message${floatActive ? ' is-floating' : ''}`}>
+          <div className="carbon-indicator__message-head">
+            <div className="carbon-indicator__icon-badge" aria-hidden="true">{tier.icon}</div>
+            <div className="carbon-indicator__message-title">{tier.title}</div>
           </div>
-          <div className="cfp-chip">{currentScore <= 2 ? 'Low impact' : currentScore >= 8 ? 'High urgency' : 'Monitor trend'}</div>
+          <p className="carbon-indicator__message-body">{tier.body}</p>
         </div>
       </div>
 
-      {/* Optional interactive demo slider */}
-      {showControls ? (
-        <div className="cfp-controls">
-          <div className="cfp-controls-top">
-            <strong>{currentScore.toFixed(1)} / 10</strong>
-            <span>{palette.label}</span>
-          </div>
-          <input
-            className="cfp-range"
-            type="range"
-            min="0"
-            max="10"
-            step="0.1"
-            value={currentScore}
-            onChange={(event) => setCurrentScore(clampScore(Number(event.target.value)))}
-            aria-label="Carbon footprint score"
-            style={{
-              background: `${derived.sliderFill}`,
-            }}
-          />
-        </div>
-      ) : null}
+      {showControls ? <div className="carbon-indicator__pill">{scoreText} / 10</div> : null}
     </div>
   );
 }
 
 export default CarbonFootprint;
+

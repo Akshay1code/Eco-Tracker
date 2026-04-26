@@ -9,6 +9,8 @@ import {
   listUsersForLeaderboard,
   toPublicUser,
   updateUserProfileSettings,
+  saveUserGoals,
+  saveUserJournal,
 } from '../models/userModel.js';
 import { listActivityRecordsForLeaderboard } from '../models/activityModel.js';
 import { WELCOME_XP } from '../constants.js';
@@ -285,6 +287,28 @@ export async function getLeaderboard(searchParams) {
       totalUsers: users.length,
     },
   };
+}
+
+export async function updateGoals(searchParams, payload = {}) {
+  const userId = normalizeUserId(getParam(searchParams, 'userId') || payload.userId);
+  if (!userId) return { status: 400, payload: { error: 'userId is required.' } };
+
+  const { goals } = payload;
+  if (!Array.isArray(goals)) return { status: 400, payload: { error: 'goals must be an array.' } };
+
+  await saveUserGoals(userId, goals);
+  return { status: 200, payload: { success: true, goals } };
+}
+
+export async function updateJournal(searchParams, payload = {}) {
+  const userId = normalizeUserId(getParam(searchParams, 'userId') || payload.userId);
+  if (!userId) return { status: 400, payload: { error: 'userId is required.' } };
+
+  const { journal } = payload;
+  if (!Array.isArray(journal)) return { status: 400, payload: { error: 'journal must be an array.' } };
+
+  await saveUserJournal(userId, journal);
+  return { status: 200, payload: { success: true, journal } };
 }
 
 export async function signupUser(payload = {}) {

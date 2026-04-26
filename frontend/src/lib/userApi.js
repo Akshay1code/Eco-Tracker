@@ -42,6 +42,26 @@ export async function updateUserProfile(userId, profileData = {}) {
   return parseApiResponse(response, 'Unable to save settings right now.');
 }
 
+export async function updateUserGoals(userId, goals = []) {
+  const normalizedUserId = typeof userId === 'string' ? userId.trim().toLowerCase() : '';
+  const response = await fetch(`${API_BASE_URL}/api/users/goals?userId=${encodeURIComponent(normalizedUserId)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ goals }),
+  });
+  return parseApiResponse(response, 'Unable to sync goals.');
+}
+
+export async function updateUserJournal(userId, journal = []) {
+  const normalizedUserId = typeof userId === 'string' ? userId.trim().toLowerCase() : '';
+  const response = await fetch(`${API_BASE_URL}/api/users/journal?userId=${encodeURIComponent(normalizedUserId)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ journal }),
+  });
+  return parseApiResponse(response, 'Unable to sync journal entries.');
+}
+
 export async function fetchBackendHealth() {
   const response = await fetch(`${API_BASE_URL}/api/health`);
   return parseApiResponse(response, 'Unable to reach the backend right now.');

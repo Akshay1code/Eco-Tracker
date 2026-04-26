@@ -1,79 +1,97 @@
+import { MdClose } from 'react-icons/md';
 import Modal from '../shared/Modal.jsx';
-import Avatar from '../shared/Avatar.jsx';
-import { RANK_BADGES } from '../../data/mockData.js';
+import '../../styles/community.css';
+
+const getRankTitle = (xp) => {
+  if (xp > 5000) return 'Eco Legend';
+  if (xp > 2000) return 'Green Master';
+  if (xp > 1000) return 'Eco Warrior';
+  if (xp > 500) return 'Seedling';
+  return 'Eco Novice';
+};
 
 function ProfileModal({ user, onClose }) {
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
-  const bars = user.weekly || [];
-  const max = Math.max(...bars, 0.01);
+  const weeklyData = user.weekly || [0, 0, 0, 0, 0, 0, 0];
+  const maxFootprint = Math.max(...weeklyData, 0.1);
+  const xpProgress = user.xp ? (user.xp % 1000) / 10 : 45; // Simulated progress for demo
 
   return (
     <Modal onClose={onClose} maxWidth={520}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ color: 'var(--forest)', fontSize: 26 }}>Community Profile</h3>
-        <button type="button" className="mini-btn" onClick={onClose}>?</button>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 14 }}>
-        <Avatar name={user.name} size={64} />
+      <header className="modal-header-flex">
         <div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--forest)' }}>{user.name}</div>
-          <div style={{ color: 'var(--gray-600)' }}>{RANK_BADGES[user.badge]}</div>
+          <h2 className="community-title" style={{ fontSize: '1.75rem', marginBottom: 0 }}>Community Profile</h2>
+          <p className="community-subtitle" style={{ fontSize: '0.8rem' }}>Detailed sustainability report</p>
+        </div>
+        <button className="modal-close-btn" onClick={onClose}>
+          <MdClose size={20} />
+        </button>
+      </header>
+
+      <section className="profile-intro">
+        <div className="profile-avatar-big">
+          {user.name?.charAt(0)}
+        </div>
+        <div>
+          <div className="user-name" style={{ fontSize: '1.5rem' }}>{user.name}</div>
+          <div className="user-title" style={{ fontSize: '1rem' }}>{getRankTitle(user.xp)}</div>
+        </div>
+      </section>
+
+      {user.bio && (
+        <div className="profile-bio-card">
+          {user.bio}
+        </div>
+      )}
+
+      <div className="modal-stat-grid">
+        <div className="modal-stat-card">
+          <span className="modal-stat-label">Global Rank</span>
+          <span className="modal-stat-value">#{user.dynamicRank || user.rank}</span>
+        </div>
+        <div className="modal-stat-card">
+          <span className="modal-stat-label">Weekly Score</span>
+          <span className="modal-stat-value">{user.score?.toFixed(2)} kg</span>
+        </div>
+        <div className="modal-stat-card">
+          <span className="modal-stat-label">Eco Streak</span>
+          <span className="modal-stat-value">{user.streak || 0} Days</span>
         </div>
       </div>
 
-      <div className="card-white" style={{ marginTop: 12, padding: 12, borderRadius: 14 }}>
-        <p style={{ color: 'var(--gray-600)' }}>{user.bio}</p>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginTop: 12 }}>
-        <div className="mini-stat"><span>Rank</span><strong>#{user.rank}</strong></div>
-        <div className="mini-stat"><span>Score</span><strong>{user.score.toFixed(2)} kg</strong></div>
-        <div className="mini-stat"><span>Streak</span><strong>{user.streak} days</strong></div>
-      </div>
-
-      {typeof user.level === 'number' ? (
-        <div style={{ marginTop: 12 }} className="card-white">
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
-            <strong style={{ color: 'var(--forest)' }}>Level {user.level}</strong>
-            <span style={{ color: 'var(--gray-600)', fontSize: 12 }}>{user.xp} XP</span>
-          </div>
-          {Array.isArray(user.badges) && user.badges.length ? (
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-              {user.badges.slice(-3).map((badge) => (
-                <span key={badge.key || badge.label} className="pill">{badge.label}</span>
-              ))}
-            </div>
-          ) : null}
+      <div className="level-progress-container">
+        <div className="level-header">
+          <span>Level {user.level || Math.floor((user.xp || 0) / 1000) + 1}</span>
+          <span>{user.xp || 0} XP</span>
         </div>
-      ) : null}
-
-      <div style={{ marginTop: 14 }}>
-        <div style={{ fontWeight: 700, color: 'var(--forest)', marginBottom: 8 }}>7-Day Footprint</div>
-        <div style={{ display: 'flex', alignItems: 'end', gap: 8, height: 100 }}>
-          {bars.map((val, i) => (
-            <div
-              key={i}
-              title={`${val.toFixed(2)} kg`}
-              style={{
-                flex: 1,
-                borderRadius: '8px 8px 0 0',
-                background: 'linear-gradient(180deg, #34d399, #15803d)',
-                height: `${(val / max) * 100}%`,
-                minHeight: 14,
-              }}
-            />
-          ))}
+        <div className="level-bar-bg">
+          <div className="level-bar-fill" style={{ width: `${xpProgress}%` }} />
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-        <span className="pill">Low Carbon Hero</span>
-        <span className="pill">Transit Saver</span>
-        <span className="pill">Streak Master</span>
+      <h3 className="footprint-chart-label">7-Day Footprint Trend</h3>
+      <div className="mini-footprint-bars">
+        {weeklyData.map((val, i) => (
+          <div
+            key={i}
+            className={`mini-bar ${i === weeklyData.length - 1 ? 'active' : ''}`}
+            style={{ height: `${(val / maxFootprint) * 100}%`, minHeight: '10%' }}
+            title={`${val.toFixed(2)} kg CO2`}
+          />
+        ))}
+      </div>
+
+      <div className="badge-cloud">
+        {(user.badges || [
+          { label: 'Low Carbon Hero' },
+          { label: 'Transit Saver' },
+          { label: 'Streak Master' }
+        ]).map((badge, idx) => (
+          <span key={idx} className="badge-tag">
+            {badge.label}
+          </span>
+        ))}
       </div>
     </Modal>
   );
