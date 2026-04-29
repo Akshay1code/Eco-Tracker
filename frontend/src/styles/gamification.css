@@ -217,6 +217,31 @@
   margin: 0;
 }
 
+.summary-stack {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.summary-inline-card {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.95rem 1rem;
+  border-radius: 1rem;
+  background: rgba(240, 250, 242, 0.9);
+  border: 1px solid rgba(46, 125, 50, 0.12);
+}
+
+.summary-inline-card strong {
+  font-size: 1rem;
+  color: var(--eco-dark);
+}
+
+.summary-inline-card span {
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: #587b5c;
+}
+
 .feature-empty {
   min-height: 150px;
   border: 1px dashed rgba(46, 125, 50, 0.2);
@@ -273,6 +298,42 @@
 .quest-list {
   display: grid;
   gap: 1.25rem;
+}
+
+.story-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.story-strip-card {
+  padding: 1rem 1.1rem;
+  border-radius: 1.15rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(240, 250, 242, 0.95));
+  border: 1px solid rgba(46, 125, 50, 0.1);
+  box-shadow: 0 12px 28px rgba(27, 94, 32, 0.05);
+  display: grid;
+  gap: 0.35rem;
+}
+
+.story-strip-card strong {
+  color: var(--eco-dark);
+  font-size: 1rem;
+}
+
+.story-strip-card p {
+  margin: 0;
+  color: #587b5c;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.story-strip-date {
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--eco-base);
 }
 
 .quest-card {
@@ -381,6 +442,13 @@
   font-size: 0.825rem;
   font-weight: 700;
   color: #5f8462;
+}
+
+.quest-milestone-note {
+  margin-top: 0.65rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--eco-mid);
 }
 
 .quest-progress-bar {
@@ -616,6 +684,24 @@
   min-height: 160px;
 }
 
+.reflection-guide-card {
+  display: grid;
+  gap: 0.4rem;
+  margin-bottom: 1.2rem;
+}
+
+.reflection-guide-card strong {
+  color: var(--eco-dark);
+  font-size: 0.92rem;
+}
+
+.reflection-guide-card p {
+  margin: 0;
+  color: #587b5c;
+  line-height: 1.5;
+  font-size: 0.88rem;
+}
+
 .mood-selector {
   display: flex;
   gap: 0.75rem;
@@ -751,5 +837,9 @@
 
   .quest-footer .complete-btn {
     width: 100%;
+  }
+
+  .story-strip {
+    grid-template-columns: 1fr;
   }
 }

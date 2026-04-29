@@ -115,6 +115,35 @@ const getMoodMeta = (value) => {
   };
 };
 
+const getMoodCountLabel = (entries = []) => {
+  if (!entries.length) {
+    return 'No reflections yet';
+  }
+
+  const counts = entries.reduce((lookup, entry) => {
+    const key = getMoodMeta(entry.mood).label;
+    lookup[key] = (lookup[key] || 0) + 1;
+    return lookup;
+  }, {});
+
+  const [label, total] = Object.entries(counts).sort((left, right) => right[1] - left[1])[0];
+  return `${label} leads with ${total} note${total === 1 ? '' : 's'}`;
+};
+
+const getRecentCadence = (entries = []) => {
+  if (!entries.length) {
+    return 0;
+  }
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 6);
+
+  return entries.filter((entry) => {
+    const parsed = new Date(`${entry.date || ''}T00:00:00`);
+    return !Number.isNaN(parsed.getTime()) && parsed >= cutoff;
+  }).length;
+};
+
 export default function JournalView({ onLogout, activeTab = 'journal' }) {
   const storedEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
   const { user: userProfile, isLoading, error } = useUserProfile(storedEmail);
@@ -143,12 +172,23 @@ export default function JournalView({ onLogout, activeTab = 'journal' }) {
       ? entries.reduce((sum, entry) => sum + (Number(entry.footprint) || 0), 0) / totalEntries
       : 0;
     const lowImpactDays = entries.filter((entry) => Number(entry.footprint) <= 0.2).length;
+    const averageWords = totalEntries
+      ? Math.round(
+          entries.reduce(
+            (sum, entry) => sum + (entry.text?.trim().split(/\s+/).filter(Boolean).length || 0),
+            0
+          ) / totalEntries
+        )
+      : 0;
 
     return {
       totalEntries,
       reflectionsThisMonth,
       averageImpact,
       lowImpactDays,
+      averageWords,
+      recentCadence: getRecentCadence(entries),
+      leadingMood: getMoodCountLabel(entries),
       streak: getReflectionStreak(entries),
       latestEntry: entries[0] || null,
     };
@@ -297,6 +337,31 @@ export default function JournalView({ onLogout, activeTab = 'journal' }) {
             ))}
           </div>
         </article>
+
+        <article className="feature-panel">
+          <div className="feature-panel-header">
+            <div>
+              <span className="section-kicker">Reflection Rhythm</span>
+              <h2 className="feature-panel-title">What your recent pattern looks like</h2>
+            </div>
+            <MdToday className="feature-panel-icon" />
+          </div>
+
+          <div className="summary-stack">
+            <div className="summary-inline-card">
+              <strong>{stats.recentCadence}</strong>
+              <span>reflections logged in the last 7 days</span>
+            </div>
+            <div className="summary-inline-card">
+              <strong>{stats.averageWords}</strong>
+              <span>average words per note</span>
+            </div>
+            <div className="summary-inline-card">
+              <strong>{stats.leadingMood}</strong>
+              <span>your most common reflection tone</span>
+            </div>
+          </div>
+        </article>
       </section>
 
       {showForm && (
@@ -346,6 +411,11 @@ export default function JournalView({ onLogout, activeTab = 'journal' }) {
             </div>
           </div>
 
+          <div className="field-meta-card reflection-guide-card">
+            <strong>Reflection guide</strong>
+            <p>Try this flow: one action you took, one tradeoff you noticed, and one lighter choice to repeat tomorrow.</p>
+          </div>
+
           <div className="form-actions-row">
             <button type="submit" className="complete-btn complete-btn-wide" disabled={isSaving}>
               {isSaving ? 'Saving Reflection...' : 'Preserve Memory'}
@@ -368,6 +438,21 @@ export default function JournalView({ onLogout, activeTab = 'journal' }) {
           </div>
           <span className="section-count">{entries.length} saved</span>
         </div>
+
+        {entries.length > 0 ? (
+          <div className="story-strip">
+            {entries.slice(0, 3).map((entry) => {
+              const mood = getMoodMeta(entry.mood);
+              return (
+                <article key={`story-${entry.id}`} className="story-strip-card">
+                  <span className="story-strip-date">{formatLongDate(entry.date)}</span>
+                  <strong>{mood.label}</strong>
+                  <p>{entry.text}</p>
+                </article>
+              );
+            })}
+          </div>
+        ) : null}
 
         <div className="journal-grid">
           {entries.length > 0 ? (

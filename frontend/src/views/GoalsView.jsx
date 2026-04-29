@@ -118,6 +118,15 @@ const getGoalStatus = (goal) => {
   };
 };
 
+const getNextMilestone = (progress) => {
+  const value = clampProgress(progress);
+  if (value >= 100) return 'Mission complete';
+  if (value < 25) return 'Next checkpoint: 25%';
+  if (value < 50) return 'Next checkpoint: 50%';
+  if (value < 75) return 'Next checkpoint: 75%';
+  return 'Next checkpoint: completion';
+};
+
 export default function GoalsView({ onLogout, activeTab = 'goals' }) {
   const storedEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
   const { user: userProfile, isLoading: isUserLoading, error } = useUserProfile(storedEmail);
@@ -211,6 +220,24 @@ export default function GoalsView({ onLogout, activeTab = 'goals' }) {
 
   const activeGoals = useMemo(() => goals.filter((goal) => !goal.done), [goals]);
   const completedGoals = useMemo(() => goals.filter((goal) => goal.done), [goals]);
+  const priorityGoal = useMemo(() => {
+    if (!activeGoals.length) {
+      return null;
+    }
+
+    return [...activeGoals].sort((left, right) => {
+      const leftDays = getDaysRemaining(left.deadline);
+      const rightDays = getDaysRemaining(right.deadline);
+      const normalizedLeft = leftDays === null ? Number.POSITIVE_INFINITY : leftDays;
+      const normalizedRight = rightDays === null ? Number.POSITIVE_INFINITY : rightDays;
+
+      if (normalizedLeft !== normalizedRight) {
+        return normalizedLeft - normalizedRight;
+      }
+
+      return clampProgress(right.progress) - clampProgress(left.progress);
+    })[0];
+  }, [activeGoals]);
 
   const stats = useMemo(() => {
     const averageProgress = activeGoals.length
@@ -231,8 +258,9 @@ export default function GoalsView({ onLogout, activeTab = 'goals' }) {
       dueSoonCount,
       overdueCount,
       earnedXp,
+      completionRate: goals.length ? Math.round((completedGoals.length / goals.length) * 100) : 0,
     };
-  }, [activeGoals, completedGoals]);
+  }, [activeGoals, completedGoals, goals.length]);
 
   return (
     <div className="gamification-page">
@@ -339,6 +367,30 @@ export default function GoalsView({ onLogout, activeTab = 'goals' }) {
             </p>
           </div>
         </article>
+
+        <article className="feature-panel">
+          <div className="feature-panel-header">
+            <div>
+              <span className="section-kicker">Priority Mission</span>
+              <h2 className="feature-panel-title">Where your energy should go next</h2>
+            </div>
+            <MdTimer className="feature-panel-icon" />
+          </div>
+
+          {priorityGoal ? (
+            <div className="feature-spotlight feature-spotlight-soft">
+              <p className="feature-spotlight-text">{priorityGoal.title}</p>
+              <p className="feature-spotlight-meta">
+                {getGoalStatus(priorityGoal).detail}. {getNextMilestone(priorityGoal.progress)}.
+              </p>
+            </div>
+          ) : (
+            <div className="feature-empty">
+              <MdTrackChanges size="2rem" />
+              <p>Your next priority mission will appear here once you add a goal.</p>
+            </div>
+          )}
+        </article>
       </section>
 
       {showForm && (
@@ -419,6 +471,24 @@ export default function GoalsView({ onLogout, activeTab = 'goals' }) {
           <span className="section-count">{activeGoals.length} active</span>
         </div>
 
+        <div className="story-strip">
+          <article className="story-strip-card">
+            <span className="story-strip-date">Board completion</span>
+            <strong>{stats.completionRate}%</strong>
+            <p>Share of all quests that have already been finished.</p>
+          </article>
+          <article className="story-strip-card">
+            <span className="story-strip-date">Due this week</span>
+            <strong>{stats.dueSoonCount}</strong>
+            <p>Missions that deserve attention before the week closes.</p>
+          </article>
+          <article className="story-strip-card">
+            <span className="story-strip-date">Recovered XP</span>
+            <strong>{stats.earnedXp}</strong>
+            <p>Total reward earned from quests you have already closed out.</p>
+          </article>
+        </div>
+
         <div className="quest-list">
           {activeGoals.map((quest) => {
             const status = getGoalStatus(quest);
@@ -441,6 +511,8 @@ export default function GoalsView({ onLogout, activeTab = 'goals' }) {
                   <span>{progress}% complete</span>
                   <span>{status.detail}</span>
                 </div>
+
+                <div className="quest-milestone-note">{getNextMilestone(progress)}</div>
 
                 <div className="quest-progress-bar">
                   <div className="quest-progress-fill" style={{ width: `${progress}%` }} />
