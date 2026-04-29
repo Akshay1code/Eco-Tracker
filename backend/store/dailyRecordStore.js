@@ -65,3 +65,10 @@ export async function listDailyRecords(userId) {
     .map(([, record]) => record)
     .sort((left, right) => right.date.localeCompare(left.date));
 }
+
+export async function listAllDailyRecords() {
+  const store = await readStore();
+  return Object.values(store.records).sort(
+    (left, right) => right.userId.localeCompare(left.userId) || right.date.localeCompare(left.date)
+  );
+}

@@ -5,19 +5,43 @@ function normalizeMongoUri(uri) {
   return typeof uri === 'string' && uri.trim() ? uri.trim() : '';
 }
 
+function normalizeProvider(value) {
+  const provider = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  return ['auto', 'mongo', 'file'].includes(provider) ? provider : 'auto';
+}
+
 const DEFAULT_URI = normalizeMongoUri(process.env.MONGODB_URI);
 const FALLBACK_URI = normalizeMongoUri(process.env.MONGODB_URI_FALLBACK);
 const DATABASE_NAME = process.env.MONGODB_DB_NAME || 'ecotrackerdb';
 const SERVER_SELECTION_TIMEOUT_MS = Number(process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS || 5000);
+const DATA_PROVIDER = normalizeProvider(process.env.DATA_PROVIDER);
 
 let clientPromise = null;
 let databaseInstance = null;
 let connectedUri = null;
 let connectionState = 'idle';
 let lastConnectionError = null;
+let persistenceMode = DATA_PROVIDER === 'file' ? 'file' : 'mongo';
+
+function isMongoUri(uri) {
+  return typeof uri === 'string' && (uri.startsWith('mongodb://') || uri.startsWith('mongodb+srv://'));
+}
 
 function isAtlasUri(uri) {
   return typeof uri === 'string' && (uri.startsWith('mongodb+srv://') || uri.includes('mongodb.net'));
+}
+
+function canUseFileFallback() {
+  return DATA_PROVIDER !== 'mongo';
+}
+
+function activateFileStore(reason = null) {
+  clientPromise = null;
+  databaseInstance = null;
+  connectedUri = null;
+  connectionState = 'connected';
+  persistenceMode = 'file';
+  lastConnectionError = reason;
 }
 
 function shouldTryFallback(error) {
@@ -69,16 +93,16 @@ async function connectClient(uri) {
   return client;
 }
 
-function assertAtlasConfiguration(uri) {
+function assertPrimaryConfiguration(uri) {
   if (!uri) {
     throw new Error(
-      '[eco-backend] MONGODB_URI is required and must point to your MongoDB Atlas cluster.'
+      '[eco-backend] MONGODB_URI is required when DATA_PROVIDER is set to "mongo".'
     );
   }
 
-  if (!isAtlasUri(uri)) {
+  if (!isMongoUri(uri)) {
     throw new Error(
-      `[eco-backend] Refusing to start with a non-Atlas MongoDB URI: ${uri}\n[eco-backend] Set MONGODB_URI in backend/.env to your Atlas connection string.`
+      `[eco-backend] MONGODB_URI must be a valid MongoDB connection string. Received: ${uri}`
     );
   }
 }
@@ -88,7 +112,7 @@ function assertFallbackConfiguration(uri) {
     return;
   }
 
-  if (uri.startsWith('mongodb://') || isAtlasUri(uri)) {
+  if (isMongoUri(uri)) {
     return;
   }
 
@@ -98,14 +122,33 @@ function assertFallbackConfiguration(uri) {
 }
 
 export async function connectToDatabase() {
+  if (DATA_PROVIDER === 'file') {
+    activateFileStore(null);
+    return null;
+  }
+
+  if (persistenceMode === 'file') {
+    return null;
+  }
+
   if (databaseInstance) {
     return databaseInstance;
   }
 
   if (!clientPromise) {
-    assertAtlasConfiguration(DEFAULT_URI);
+    if (!DEFAULT_URI) {
+      if (canUseFileFallback()) {
+        activateFileStore('[eco-backend] MONGODB_URI not configured. Using local JSON storage.');
+        return null;
+      }
+
+      assertPrimaryConfiguration(DEFAULT_URI);
+    }
+
+    assertPrimaryConfiguration(DEFAULT_URI);
     assertFallbackConfiguration(FALLBACK_URI);
     connectionState = 'connecting';
+    persistenceMode = 'mongo';
     lastConnectionError = null;
     clientPromise = (async () => {
       try {
@@ -122,11 +165,23 @@ export async function connectToDatabase() {
             lastConnectionError = null;
             return client;
           } catch (fallbackError) {
+            if (canUseFileFallback()) {
+              activateFileStore(
+                fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
+              );
+              return null;
+            }
+
             connectionState = 'error';
             lastConnectionError =
               fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
             throw fallbackError;
           }
+        }
+
+        if (canUseFileFallback()) {
+          activateFileStore(primaryError instanceof Error ? primaryError.message : String(primaryError));
+          return null;
         }
 
         connectionState = 'error';
@@ -140,6 +195,10 @@ export async function connectToDatabase() {
   }
 
   const client = await clientPromise;
+  if (!client) {
+    return null;
+  }
+
   databaseInstance = client.db(DATABASE_NAME);
   return databaseInstance;
 }
@@ -152,7 +211,20 @@ export function getDb() {
   return databaseInstance;
 }
 
+export function isFileStoreMode() {
+  return persistenceMode === 'file';
+}
+
 export function getDatabaseStatus() {
+  if (persistenceMode === 'file') {
+    return {
+      status: 'connected',
+      mode: 'file',
+      label: 'Local JSON Store',
+      error: lastConnectionError,
+    };
+  }
+
   if (connectionState === 'connected' && connectedUri) {
     if (connectedUri.startsWith('mongodb+srv://') || connectedUri.includes('mongodb.net')) {
       return {

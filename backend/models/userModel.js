@@ -1,7 +1,15 @@
 import { ObjectId } from 'mongodb';
-import { getDb } from '../db.js';
+import { getDb, isFileStoreMode } from '../db.js';
 import { WELCOME_XP } from '../constants.js';
 import { buildProgressionSnapshot } from '../services/progression.js';
+import {
+  findStoredUserByEmailKey,
+  findStoredUserByIdentifier,
+  findStoredUserByNicknameKey,
+  insertStoredUser,
+  listStoredUsers,
+  updateStoredUserByEmailKey,
+} from '../store/userStore.js';
 
 const USERS_COLLECTION = 'users';
 
@@ -72,6 +80,10 @@ function sanitizeUserDocument(document) {
 }
 
 export async function ensureUserIndexes() {
+  if (isFileStoreMode()) {
+    return;
+  }
+
   const collection = getUsersCollection();
   await collection.createIndex({ emailKey: 1 }, { unique: true, name: 'uniq_user_email' });
   await collection.createIndex({ nicknameKey: 1 }, { unique: true, sparse: true, name: 'uniq_user_nickname' });
@@ -84,6 +96,10 @@ export async function findUserByEmail(email) {
     return null;
   }
 
+  if (isFileStoreMode()) {
+    return findStoredUserByEmailKey(emailKey);
+  }
+
   return getUsersCollection().findOne({ emailKey });
 }
 
@@ -91,6 +107,10 @@ export async function findUserByNickname(nickname) {
   const nicknameKey = normalizeLookupValue(nickname);
   if (!nicknameKey) {
     return null;
+  }
+
+  if (isFileStoreMode()) {
+    return findStoredUserByNicknameKey(nicknameKey);
   }
 
   return getUsersCollection().findOne({ nicknameKey });
@@ -122,6 +142,10 @@ export async function findUserByIdentifier(identifier) {
     return null;
   }
 
+  if (isFileStoreMode()) {
+    return findStoredUserByIdentifier(key);
+  }
+
   return getUsersCollection().findOne({
     $or: [{ emailKey: key }, { nicknameKey: key }, { nameKey: key }],
   });
@@ -131,6 +155,10 @@ export async function findUserByUserId(userId) {
   const userKey = normalizeLookupValue(userId);
   if (!userKey) {
     return null;
+  }
+
+  if (isFileStoreMode()) {
+    return findStoredUserByEmailKey(userKey);
   }
 
   return getUsersCollection().findOne({ emailKey: userKey });
@@ -164,6 +192,10 @@ export async function createUser(userData) {
     updatedAt: timestamp,
   };
 
+  if (isFileStoreMode()) {
+    return insertStoredUser(document);
+  }
+
   const result = await getUsersCollection().insertOne(document);
   return {
     ...document,
@@ -172,6 +204,10 @@ export async function createUser(userData) {
 }
 
 export async function listUsersForLeaderboard() {
+  if (isFileStoreMode()) {
+    return listStoredUsers();
+  }
+
   return getUsersCollection()
     .find(
       {},
@@ -207,18 +243,29 @@ export async function syncUserProgress(userId, totalXp) {
 
   const progression = buildProgressionSnapshot(totalXp, existingUser.badges, timestamp);
 
-  await getUsersCollection().updateOne(
-    { emailKey: normalizeLookupValue(userId) },
-    {
-      $set: {
-        score: progression.score,
-        level: progression.level,
-        levelProgressPct: progression.levelProgressPct,
-        badges: progression.badges,
-        updatedAt: timestamp,
-      },
-    }
-  );
+  if (isFileStoreMode()) {
+    await updateStoredUserByEmailKey(normalizeLookupValue(userId), (currentUser) => ({
+      ...currentUser,
+      score: progression.score,
+      level: progression.level,
+      levelProgressPct: progression.levelProgressPct,
+      badges: progression.badges,
+      updatedAt: timestamp,
+    }));
+  } else {
+    await getUsersCollection().updateOne(
+      { emailKey: normalizeLookupValue(userId) },
+      {
+        $set: {
+          score: progression.score,
+          level: progression.level,
+          levelProgressPct: progression.levelProgressPct,
+          badges: progression.badges,
+          updatedAt: timestamp,
+        },
+      }
+    );
+  }
 
   return {
     ...existingUser,
@@ -241,18 +288,29 @@ export async function updateUserProfileSettings(userId, profileData = {}) {
   const nextBio = typeof profileData.bio === 'string' ? profileData.bio.trim() : existingUser.bio || '';
   const nextSettings = normalizeUserSettings(profileData.settings, existingUser.settings);
 
-  await getUsersCollection().updateOne(
-    { emailKey: normalizeLookupValue(userId) },
-    {
-      $set: {
-        name: nextName,
-        nameKey: normalizeLookupValue(nextName),
-        bio: nextBio,
-        settings: nextSettings,
-        updatedAt: timestamp,
-      },
-    }
-  );
+  if (isFileStoreMode()) {
+    await updateStoredUserByEmailKey(normalizeLookupValue(userId), (currentUser) => ({
+      ...currentUser,
+      name: nextName,
+      nameKey: normalizeLookupValue(nextName),
+      bio: nextBio,
+      settings: nextSettings,
+      updatedAt: timestamp,
+    }));
+  } else {
+    await getUsersCollection().updateOne(
+      { emailKey: normalizeLookupValue(userId) },
+      {
+        $set: {
+          name: nextName,
+          nameKey: normalizeLookupValue(nextName),
+          bio: nextBio,
+          settings: nextSettings,
+          updatedAt: timestamp,
+        },
+      }
+    );
+  }
 
   return {
     ...existingUser,
@@ -265,19 +323,35 @@ export async function updateUserProfileSettings(userId, profileData = {}) {
 
 export async function saveUserGoals(userId, goals = []) {
   const timestamp = new Date().toISOString();
-  await getUsersCollection().updateOne(
-    { emailKey: normalizeLookupValue(userId) },
-    { $set: { goals, updatedAt: timestamp } }
-  );
+  if (isFileStoreMode()) {
+    await updateStoredUserByEmailKey(normalizeLookupValue(userId), (currentUser) => ({
+      ...currentUser,
+      goals,
+      updatedAt: timestamp,
+    }));
+  } else {
+    await getUsersCollection().updateOne(
+      { emailKey: normalizeLookupValue(userId) },
+      { $set: { goals, updatedAt: timestamp } }
+    );
+  }
   return goals;
 }
 
 export async function saveUserJournal(userId, journal = []) {
   const timestamp = new Date().toISOString();
-  await getUsersCollection().updateOne(
-    { emailKey: normalizeLookupValue(userId) },
-    { $set: { journal, updatedAt: timestamp } }
-  );
+  if (isFileStoreMode()) {
+    await updateStoredUserByEmailKey(normalizeLookupValue(userId), (currentUser) => ({
+      ...currentUser,
+      journal,
+      updatedAt: timestamp,
+    }));
+  } else {
+    await getUsersCollection().updateOne(
+      { emailKey: normalizeLookupValue(userId) },
+      { $set: { journal, updatedAt: timestamp } }
+    );
+  }
   return journal;
 }
 

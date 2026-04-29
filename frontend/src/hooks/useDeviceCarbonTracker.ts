@@ -84,6 +84,11 @@ const CO2_SAVED_PER_KM_WALKED = 0.192;
 const TIME_TRIGGER_INTERVAL_MS = 15 * 60_000;
 const CHARGER_POWER_WATTS = 15;
 const GRID_EMISSION_FACTOR = 0.727;
+const DAY_CHECK_INTERVAL_MS = 30_000;
+
+function getCurrentDayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
 
 function toRad(value: number) {
   return (value * Math.PI) / 180;
@@ -194,6 +199,7 @@ export default function useDeviceCarbonTracker(
   const cadenceRef = useRef(0);
   const caloriesRef = useRef(0);
   const co2SavedRef = useRef(0);
+  const activeMinutesRef = useRef(0);
   const lastStepConfidenceRef = useRef(0);
   const averageStepConfidenceRef = useRef(0);
   const lastReportedStepsRef = useRef(0);
@@ -229,19 +235,95 @@ export default function useDeviceCarbonTracker(
     [persistedBaseline.distanceKm, sessionDistance]
   );
 
+  const buildBaseline = useCallback((dateKey: string, record: PersistedDailyRecord | null = null) => ({
+    date: dateKey,
+    steps: Math.max(0, Number(record?.steps || 0)),
+    activeMinutes: Math.max(0, round(Number(record?.active_time || 0), 2)),
+    distanceKm: Math.max(0, Number(record?.activity_distance || 0)),
+  }), []);
+
+  const resetDailySession = useCallback((dateKey: string, record: PersistedDailyRecord | null = null) => {
+    pedometerRef.current.reset();
+    prevLocationRef.current = null;
+    movementCarryMetersRef.current = 0;
+    lastMovementTsRef.current = 0;
+    lastDebugSyncAtRef.current = 0;
+    gpsDistanceRef.current = 0;
+    estimatedDistanceRef.current = 0;
+    stepsRef.current = 0;
+    activeMinutesRef.current = 0;
+    cadenceRef.current = 0;
+    caloriesRef.current = 0;
+    co2SavedRef.current = 0;
+    lastStepConfidenceRef.current = 0;
+    averageStepConfidenceRef.current = 0;
+    lastReportedStepsRef.current = 0;
+    lastReportedDistanceKmRef.current = 0;
+    baselineDateRef.current = dateKey;
+
+    setPersistedBaseline(buildBaseline(dateKey, record));
+    setGpsDistance(0);
+    setEstimatedDistance(0);
+    setSpeed(0);
+    setSteps(0);
+    setActiveMinutes(0);
+    setLocation(null);
+    setActivity('idle');
+    setMeaningfulUpdates(0);
+    setLastMovementDistance(0);
+    setCadence(0);
+    setCaloriesBurned(0);
+    setCo2SavedKg(0);
+    setLastStepConfidence(0);
+    setAverageStepConfidence(0);
+    setDebugSignals([]);
+    setRecentSteps([]);
+  }, [buildBaseline]);
+
+  const addSessionActiveMinutes = useCallback((deltaMinutes: number) => {
+    if (deltaMinutes <= 0) {
+      return 0;
+    }
+
+    activeMinutesRef.current = round(activeMinutesRef.current + deltaMinutes, 2);
+    setActiveMinutes(activeMinutesRef.current);
+    return activeMinutesRef.current;
+  }, []);
+
   useEffect(() => {
-    if (!initialRecord?.date || baselineDateRef.current === initialRecord.date) {
+    const recordDate = initialRecord?.date || '';
+    const currentDayKey = getCurrentDayKey();
+
+    if (!baselineDateRef.current) {
+      resetDailySession(recordDate || currentDayKey, initialRecord);
       return;
     }
 
-    baselineDateRef.current = initialRecord.date;
-    setPersistedBaseline({
-      date: initialRecord.date,
-      steps: Math.max(0, Number(initialRecord.steps || 0)),
-      activeMinutes: Math.max(0, Math.round(Number(initialRecord.active_time || 0))),
-      distanceKm: Math.max(0, Number(initialRecord.activity_distance || 0)),
-    });
-  }, [initialRecord]);
+    if (recordDate && baselineDateRef.current !== recordDate) {
+      resetDailySession(recordDate, initialRecord);
+      return;
+    }
+
+    if (!recordDate && baselineDateRef.current !== currentDayKey) {
+      resetDailySession(currentDayKey, null);
+      return;
+    }
+  }, [initialRecord, resetDailySession]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const interval = window.setInterval(() => {
+      const currentDayKey = getCurrentDayKey();
+      if (baselineDateRef.current && baselineDateRef.current !== currentDayKey) {
+        resetDailySession(currentDayKey, null);
+      }
+    }, DAY_CHECK_INTERVAL_MS);
+
+    return () => window.clearInterval(interval);
+  }, [resetDailySession]);
 
   const markMovement = useCallback(() => {
     lastMovementTsRef.current = Date.now();
@@ -382,18 +464,6 @@ export default function useDeviceCarbonTracker(
 
     return () => window.clearInterval(interval);
   }, [userEmail]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (typeof document !== 'undefined' && document.hidden) {
-        return;
-      }
-      if (Date.now() - lastMovementTsRef.current <= GPS_SAMPLE_INTERVAL_MS + 5_000) {
-        setActiveMinutes((prev) => prev + 1);
-      }
-    }, GPS_SAMPLE_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     if (!supported.motion || typeof window === 'undefined') return;
@@ -563,11 +633,16 @@ export default function useDeviceCarbonTracker(
           const fusedDistanceKm = Math.max(gpsDistanceRef.current, estimatedDistanceRef.current);
           const distanceDeltaMeters = Math.max(0, (fusedDistanceKm - lastReportedDistanceKmRef.current) * 1000);
           const stepsDeltaToReport = Math.max(0, stepsRef.current - lastReportedStepsRef.current);
-          const activeMinutesDelta = Math.max(1, Math.round(elapsedSeconds / 60));
+          const isPhysicallyActive = nextActivity === 'walking' || nextActivity === 'running';
+          const activeMinutesDelta = isPhysicallyActive ? round(elapsedSeconds / 60, 2) : 0;
           const shouldReportActivity =
             distanceDeltaMeters >= GPS_MOVEMENT_THRESHOLD_METERS ||
             stepsDeltaToReport >= Math.ceil(GPS_MOVEMENT_THRESHOLD_METERS / STEP_LENGTH_WALKING_METERS) ||
             fallbackSteps > 0;
+
+          if (isPhysicallyActive && shouldReportActivity) {
+            addSessionActiveMinutes(activeMinutesDelta);
+          }
 
           if (userEmail && shouldReportActivity) {
             lastReportedDistanceKmRef.current = fusedDistanceKm;

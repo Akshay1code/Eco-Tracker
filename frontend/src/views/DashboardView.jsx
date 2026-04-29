@@ -23,8 +23,8 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
 
   const dashboardData = {
     ...tracker,
-    carbon: todayRecord ? Number(todayRecord.carbon_emission || 0) : tracker.carbon,
-    footprintScore: todayRecord ? Number(todayRecord.carbon_emission || 0) : tracker.carbon,
+    carbon: todayRecord ? Number(todayRecord.net_carbon_impact ?? todayRecord.carbon_emission ?? 0) : tracker.carbon,
+    footprintScore: todayRecord ? Number(todayRecord.net_carbon_impact ?? todayRecord.carbon_emission ?? 0) : tracker.carbon,
     totalXp: Number(userProfile?.score ?? 0),
     level: Number(userProfile?.level ?? 1),
     levelProgressPct: Number(userProfile?.levelProgressPct ?? 0),

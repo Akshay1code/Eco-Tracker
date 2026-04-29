@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { fetchUserProfile } from '../lib/userApi.js';
 
-function useUserProfile(userId, pollIntervalMs = 10000) {
+function useUserProfile(userId, pollIntervalMs = 5000) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(Boolean(userId));
   const [error, setError] = useState('');

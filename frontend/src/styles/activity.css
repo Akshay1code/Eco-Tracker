@@ -610,6 +610,12 @@
   border: 1px solid rgba(105, 240, 122, 0.25);
 }
 
+.badge-co2-saved {
+  background-color: rgba(105, 240, 122, 0.14);
+  color: var(--eco-dark);
+  border: 1px solid rgba(67, 160, 71, 0.25);
+}
+
 .badge-co2-mid {
   background-color: #fff8e1;
   color: #f57f17;

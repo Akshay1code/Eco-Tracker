@@ -1,5 +1,11 @@
-import { getDb } from '../db.js';
+import { getDb, isFileStoreMode } from '../db.js';
 import { createDefaultRecord, getRecordDate, hydrateRecord } from '../services/ecoEngine.js';
+import {
+  getDailyRecord as getStoredDailyRecord,
+  listAllDailyRecords,
+  listDailyRecords as listStoredDailyRecords,
+  mutateDailyRecord as mutateStoredDailyRecord,
+} from '../store/dailyRecordStore.js';
 
 const ACTIVITIES_COLLECTION = 'activities';
 
@@ -17,12 +23,31 @@ function sanitizeActivityDocument(document) {
 }
 
 export async function ensureActivityIndexes() {
+  if (isFileStoreMode()) {
+    return;
+  }
+
   const collection = getActivitiesCollection();
   await collection.createIndex({ userId: 1, date: 1 }, { unique: true, name: 'uniq_activity_user_date' });
   await collection.createIndex({ userId: 1, date: -1 }, { name: 'idx_activity_user_date_desc' });
 }
 
 export async function mutateDailyRecord(userId, timestamp, mutator) {
+  if (isFileStoreMode()) {
+    const fileResult = await mutateStoredDailyRecord(userId, timestamp, (record) => {
+      const previousRecord = hydrateRecord({ ...record }, userId, record.date);
+      const result = mutator(record);
+      return { previousRecord, result };
+    });
+
+    return {
+      date: fileResult.date,
+      previousRecord: fileResult.result.previousRecord,
+      record: fileResult.record,
+      result: fileResult.result.result,
+    };
+  }
+
   const date = getRecordDate(timestamp);
   const collection = getActivitiesCollection();
   const existing = await collection.findOne({ userId, date });
@@ -51,6 +76,10 @@ export async function mutateDailyRecord(userId, timestamp, mutator) {
 }
 
 export async function getDailyRecord(userId, date) {
+  if (isFileStoreMode()) {
+    return getStoredDailyRecord(userId, date);
+  }
+
   const existing = await getActivitiesCollection().findOne({ userId, date });
   if (!existing) {
     return createDefaultRecord(userId, date);
@@ -60,6 +89,10 @@ export async function getDailyRecord(userId, date) {
 }
 
 export async function listDailyRecords(userId) {
+  if (isFileStoreMode()) {
+    return listStoredDailyRecords(userId);
+  }
+
   const documents = await getActivitiesCollection()
     .find({ userId })
     .sort({ date: -1 })
@@ -69,6 +102,10 @@ export async function listDailyRecords(userId) {
 }
 
 export async function listActivityRecordsForLeaderboard() {
+  if (isFileStoreMode()) {
+    return listAllDailyRecords();
+  }
+
   const documents = await getActivitiesCollection()
     .find(
       {},

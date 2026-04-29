@@ -5,7 +5,7 @@ function getTodayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function useDailyActivityRecords(userId, pollIntervalMs = 10000) {
+function useDailyActivityRecords(userId, pollIntervalMs = 5000) {
   const [records, setRecords] = useState([]);
   const [isLoading, setIsLoading] = useState(Boolean(userId));
   const [error, setError] = useState('');

@@ -1,5 +1,6 @@
 import {
   ACTIVE_DEVICE_POWER_W,
+  ACTIVE_TRAVEL_SAVED_KG_PER_KM,
   BASE_XP,
   BATTERY_DRAIN_REMINDER_THRESHOLD,
   CARBON_BASELINE_KG,
@@ -9,6 +10,7 @@ import {
   INDIA_GRID_EMISSION_FACTOR,
   MOVEMENT_THRESHOLD_METERS,
   TIME_TRIGGER_MINUTES,
+  VEHICLE_EMISSION_KG_PER_KM,
 } from '../constants.js';
 
 function round(value, digits = 6) {
@@ -17,6 +19,11 @@ function round(value, digits = 6) {
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
+}
+
+function toPositiveNumber(value) {
+  const numeric = Number(value || 0);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : 0;
 }
 
 export function createEmptyPendingActivity() {
@@ -37,6 +44,14 @@ export function createDefaultRecord(userId, date) {
     charging_time: 0,
     energy_used: 0,
     carbon_emission: 0,
+    net_carbon_impact: 0,
+    gross_carbon_impact: 0,
+    carbon_saved: 0,
+    device_energy_used: 0,
+    device_carbon_emission: 0,
+    charging_energy_used: 0,
+    charging_carbon_emission: 0,
+    transport_carbon_emission: 0,
     xp_earned: BASE_XP,
     eco_score: 100,
     activity_distance: 0,
@@ -61,9 +76,59 @@ export function createDefaultRecord(userId, date) {
   };
 }
 
+function recomputeImpactMetrics(record) {
+  const deviceEnergyUsed = toPositiveNumber(record.device_energy_used);
+  const chargingEnergyUsed = toPositiveNumber(record.charging_energy_used);
+  const deviceCarbonEmission = toPositiveNumber(record.device_carbon_emission);
+  const chargingCarbonEmission = toPositiveNumber(record.charging_carbon_emission);
+  const transportCarbonEmission = toPositiveNumber(record.transport_carbon_emission);
+  const carbonSaved = toPositiveNumber(record.carbon_saved);
+
+  const energyUsed = round(deviceEnergyUsed + chargingEnergyUsed);
+  const grossCarbonImpact = round(deviceCarbonEmission + chargingCarbonEmission + transportCarbonEmission);
+  const netCarbonImpact = round(Math.max(grossCarbonImpact - carbonSaved, 0));
+
+  record.device_energy_used = round(deviceEnergyUsed);
+  record.charging_energy_used = round(chargingEnergyUsed);
+  record.device_carbon_emission = round(deviceCarbonEmission);
+  record.charging_carbon_emission = round(chargingCarbonEmission);
+  record.transport_carbon_emission = round(transportCarbonEmission);
+  record.carbon_saved = round(carbonSaved);
+  record.energy_used = energyUsed;
+  record.gross_carbon_impact = grossCarbonImpact;
+  record.net_carbon_impact = netCarbonImpact;
+  record.carbon_emission = netCarbonImpact;
+
+  return record;
+}
+
+function hydrateLegacyImpactMetrics(record, sourceRecord) {
+  const hasStructuredImpact =
+    sourceRecord &&
+    [
+      'device_energy_used',
+      'device_carbon_emission',
+      'charging_energy_used',
+      'charging_carbon_emission',
+      'transport_carbon_emission',
+      'carbon_saved',
+    ].some((key) => Object.prototype.hasOwnProperty.call(sourceRecord, key));
+
+  if (!hasStructuredImpact) {
+    record.device_energy_used = toPositiveNumber(record.energy_used);
+    record.device_carbon_emission = toPositiveNumber(record.net_carbon_impact || record.carbon_emission);
+    record.charging_energy_used = 0;
+    record.charging_carbon_emission = 0;
+    record.transport_carbon_emission = 0;
+    record.carbon_saved = 0;
+  }
+
+  return recomputeImpactMetrics(record);
+}
+
 export function hydrateRecord(record, userId, date) {
   const base = createDefaultRecord(userId, date);
-  return {
+  const hydrated = {
     ...base,
     ...record,
     pending_activity: {
@@ -82,6 +147,8 @@ export function hydrateRecord(record, userId, date) {
     reminders: Array.isArray(record?.reminders) ? record.reminders : [],
     task_status: Array.isArray(record?.task_status) ? record.task_status : [],
   };
+
+  return hydrateLegacyImpactMetrics(hydrated, record);
 }
 
 export function getRecordDate(timestamp) {
@@ -139,7 +206,11 @@ function applyGamification(record) {
 
   record.task_status = taskStatus;
   record.xp_earned = Math.round(BASE_XP * baseFactor + taskBonus);
-  record.eco_score = clamp(Math.round(baseFactor * 100 + taskStatus.filter((task) => task.completed).length * 5), 0, 100);
+  record.eco_score = clamp(
+    Math.round(baseFactor * 100 + taskStatus.filter((task) => task.completed).length * 5),
+    0,
+    100
+  );
   record.updated_at = new Date().toISOString();
 
   return record;
@@ -150,6 +221,29 @@ function pushLimited(array, entry, maxEntries = 50) {
   if (array.length > maxEntries) {
     array.splice(0, array.length - maxEntries);
   }
+}
+
+function calculateTransportImpact(activityType, distanceMeters) {
+  const normalizedActivity = typeof activityType === 'string' ? activityType.toLowerCase() : 'walking';
+  const distanceKm = Math.max(0, Number(distanceMeters || 0)) / 1000;
+
+  if (!distanceKm) {
+    return { emittedKg: 0, savedKg: 0, direction: 'neutral' };
+  }
+
+  if (normalizedActivity === 'vehicle' || normalizedActivity === 'transport' || normalizedActivity === 'driving') {
+    return {
+      emittedKg: round(distanceKm * VEHICLE_EMISSION_KG_PER_KM),
+      savedKg: 0,
+      direction: 'emitted',
+    };
+  }
+
+  return {
+    emittedKg: 0,
+    savedKg: round(distanceKm * ACTIVE_TRAVEL_SAVED_KG_PER_KM),
+    direction: 'saved',
+  };
 }
 
 export function applyActivityTrigger(record, payload) {
@@ -166,10 +260,13 @@ export function applyActivityTrigger(record, payload) {
   const stepsDelta = Math.max(0, Math.floor(Number(payload.stepsDelta || 0)));
   const activeMinutesDelta = Math.max(0, Number(payload.activeMinutes || 0));
   const timestamp = payload.timestamp || new Date().toISOString();
+  const transportImpact = calculateTransportImpact(payload.activityType, distanceMeters);
 
   record.steps += stepsDelta;
   record.active_time = round(record.active_time + activeMinutesDelta, 2);
   record.activity_distance = round(record.activity_distance + distanceMeters / 1000, 3);
+  record.transport_carbon_emission = round(record.transport_carbon_emission + transportImpact.emittedKg);
+  record.carbon_saved = round(record.carbon_saved + transportImpact.savedKg);
 
   record.pending_activity.detected = true;
   record.pending_activity.distance_m = round(record.pending_activity.distance_m + distanceMeters, 2);
@@ -180,9 +277,14 @@ export function applyActivityTrigger(record, payload) {
     timestamp,
     distance_moved: round(distanceMeters, 2),
     activity: payload.activityType || 'walking',
+    carbon_delta_kg: round(transportImpact.emittedKg || transportImpact.savedKg),
+    carbon_direction: transportImpact.direction,
+    net_impact_delta_kg: round(transportImpact.emittedKg - transportImpact.savedKg),
     cadence_spm: payload.cadenceSpm ? round(Number(payload.cadenceSpm), 1) : 0,
     confidence: payload.confidence ? round(Number(payload.confidence), 3) : 0,
   });
+
+  recomputeImpactMetrics(record);
 
   return {
     updated: true,
@@ -204,14 +306,27 @@ export function applyTimeTrigger(record, payload) {
   }
 
   const intervalMinutes = Math.max(1, Number(payload.intervalMinutes || TIME_TRIGGER_MINUTES));
-  const activeMinutes = Math.max(record.pending_activity.active_minutes, Math.min(intervalMinutes, record.active_time || 0));
+  const activeMinutes = round(Math.max(0, Number(record.pending_activity.active_minutes || 0)), 2);
+  if (activeMinutes <= 0) {
+    record.last_time_trigger_at = timestamp;
+    record.pending_activity = createEmptyPendingActivity();
+    return {
+      updated: false,
+      skipped: true,
+      reason: 'no_active_minutes',
+      intervalMinutes,
+      record: applyGamification(record),
+    };
+  }
+
   const energyKwh = calculateActiveEnergyKwh(activeMinutes, Number(payload.devicePowerWatts || ACTIVE_DEVICE_POWER_W));
   const carbonKg = calculateCarbonKg(energyKwh);
 
-  record.energy_used = round(record.energy_used + energyKwh);
-  record.carbon_emission = round(record.carbon_emission + carbonKg);
+  record.device_energy_used = round(record.device_energy_used + energyKwh);
+  record.device_carbon_emission = round(record.device_carbon_emission + carbonKg);
   record.last_time_trigger_at = timestamp;
   record.pending_activity = createEmptyPendingActivity();
+  recomputeImpactMetrics(record);
 
   return {
     updated: true,
@@ -284,14 +399,16 @@ export function applyBatteryTrigger(record, payload) {
     carbonKg = calculateCarbonKg(energyKwh);
 
     record.charging_time = round(record.charging_time + durationMinutes, 2);
-    record.energy_used = round(record.energy_used + energyKwh);
-    record.carbon_emission = round(record.carbon_emission + carbonKg);
+    record.charging_energy_used = round(record.charging_energy_used + energyKwh);
+    record.charging_carbon_emission = round(record.charging_carbon_emission + carbonKg);
 
     chargeSession.active = false;
     chargeSession.started_at = null;
     chargeSession.charger_power_w = Number(payload.chargerPowerWatts || DEFAULT_CHARGER_POWER_W);
     event = 'charging-stopped';
   }
+
+  recomputeImpactMetrics(record);
 
   return {
     updated: true,
