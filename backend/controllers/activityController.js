@@ -113,7 +113,12 @@ export async function postActivityTrigger(body = {}) {
       date: record.date,
       thresholdMeters: 20,
       user,
+      // Spread the engine result so consumers can read result.updated, result.record, etc.
       ...result,
+      // Also surface the most important live metrics at the top level for quick access
+      net_carbon_impact: record.net_carbon_impact,
+      xp_earned: record.xp_earned,
+      eco_score: record.eco_score,
     },
   };
 }

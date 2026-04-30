@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import EcoDashboardHeader from '../components/layout/EcoDashboardHeader.jsx';
 import HeroCard from '../components/dashboard/HeroCard.jsx';
 import EcoCalendar from '../components/dashboard/EcoCalendar.jsx';
@@ -17,15 +18,40 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
   const {
     records: activityRecords,
     todayRecord,
-  } = useDailyActivityRecords(storedEmail);
+  } = useDailyActivityRecords(storedEmail, 30_000); // 30 s is sufficient — triggers keep it fresh
   const { user: userProfile } = useUserProfile(storedEmail);
   const tracker = useDeviceCarbonTracker(storedEmail, todayRecord);
 
+  // Write live carbon to localStorage so the sidebar in App.jsx can read it without prop drilling
+  useEffect(() => {
+    if (!todayRecord) return;
+    const todayKey = new Date().toISOString().slice(0, 10);
+    try {
+      const existing = JSON.parse(localStorage.getItem(`eco_daily_${todayKey}`) || '{}');
+      localStorage.setItem(
+        `eco_daily_${todayKey}`,
+        JSON.stringify({
+          ...existing,
+          carbon: Number(todayRecord.net_carbon_impact ?? todayRecord.carbon_emission ?? 0),
+          date: todayKey,
+        })
+      );
+    } catch { /* ignore */ }
+  }, [todayRecord]);
+
+  // Prefer real-time backend score (returned by activity triggers) over cached profile.
+  // tracker.backendScore is updated on every GPS movement event that crosses the 20m threshold.
+  const liveXp = tracker.backendScore ?? Number(userProfile?.score ?? 0);
+
+  // tracker.carbon is already set to backendCarbonKg when available (see useDeviceCarbonTracker).
+  // todayRecord from the daily poll gives the same source-of-truth but may be slightly stale.
+  const liveCarbon = tracker.carbon;
+
   const dashboardData = {
     ...tracker,
-    carbon: todayRecord ? Number(todayRecord.net_carbon_impact ?? todayRecord.carbon_emission ?? 0) : tracker.carbon,
-    footprintScore: todayRecord ? Number(todayRecord.net_carbon_impact ?? todayRecord.carbon_emission ?? 0) : tracker.carbon,
-    totalXp: Number(userProfile?.score ?? 0),
+    carbon: liveCarbon,
+    footprintScore: liveCarbon,
+    totalXp: liveXp,
     level: Number(userProfile?.level ?? 1),
     levelProgressPct: Number(userProfile?.levelProgressPct ?? 0),
     badges: Array.isArray(userProfile?.badges) ? userProfile.badges : [],

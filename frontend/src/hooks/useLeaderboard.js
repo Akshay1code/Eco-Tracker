@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { fetchLeaderboard } from '../lib/communityApi.js';
 
-function useLeaderboard(limit = 20, pollIntervalMs = 5000) {
+function useLeaderboard(limit = 20, pollIntervalMs = 60_000) {
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Sidebar from './components/layout/Sidebar.jsx';
 import LeafSVG from './components/shared/LeafSVG.jsx';
 import DashboardView from './views/DashboardView.jsx';
@@ -37,8 +37,35 @@ function FloatingLeaves() {
   );
 }
 
+/** Read today's tracked carbon from localStorage (written by useDeviceCarbonTracker every 10 s) */
+function useLiveDailyCarbon() {
+  const todayKey = new Date().toISOString().split('T')[0];
+  const read = () => {
+    try {
+      const raw = localStorage.getItem(`eco_daily_${todayKey}`);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      const val = Number(parsed?.carbon ?? parsed?.net_carbon_impact ?? 0);
+      return Number.isFinite(val) ? val : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const [carbon, setCarbon] = useState(() => read());
+
+  useEffect(() => {
+    const id = setInterval(() => setCarbon(read()), 10_000);
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayKey]);
+
+  return carbon;
+}
+
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const liveDailyCarbon = useLiveDailyCarbon();
   const [calModal, setCalModal] = useState(null);
   const [profileModal, setProfileModal] = useState(null);
   const [screen, setScreen] = useState(() => {
@@ -140,7 +167,7 @@ function App() {
           activeItem={activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
           userName={sidebarUserName}
           userInitials={sidebarInitials}
-          dailyFootprint={0.41}
+          dailyFootprint={liveDailyCarbon !== null ? liveDailyCarbon : undefined}
           onNavigate={(item) => setActiveTab(item.key)}
         />
         <main className="app-main">

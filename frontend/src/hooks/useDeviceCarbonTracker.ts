@@ -59,6 +59,10 @@ export interface DeviceCarbonData {
   chargingEnergyKwh: number;
   chargingCarbonKg: number;
   batteryAlert: TrackerAlert | null;
+  /** XP/score returned by the backend after the last activity trigger. Null until first successful sync. */
+  backendScore: number | null;
+  /** Net carbon impact (kg) returned by the backend record. Null until first successful sync. */
+  backendCarbonKg: number | null;
   supported: { geolocation: boolean; battery: boolean; motion: boolean };
   requestMotionAccess: () => Promise<boolean>;
   dismissBatteryAlert: () => void;
@@ -176,6 +180,8 @@ export default function useDeviceCarbonTracker(
   const [chargingEnergyKwh, setChargingEnergyKwh] = useState(0);
   const [chargingCarbonKg, setChargingCarbonKg] = useState(0);
   const [batteryAlert, setBatteryAlert] = useState<TrackerAlert | null>(null);
+  const [backendScore, setBackendScore] = useState<number | null>(null);
+  const [backendCarbonKg, setBackendCarbonKg] = useState<number | null>(null);
   const [persistedBaseline, setPersistedBaseline] = useState({
     date: '',
     steps: 0,
@@ -648,7 +654,7 @@ export default function useDeviceCarbonTracker(
             lastReportedDistanceKmRef.current = fusedDistanceKm;
             lastReportedStepsRef.current = stepsRef.current;
 
-            void sendActivityTrigger({
+            sendActivityTrigger({
               userId: userEmail,
               distanceMeters: round(distanceDeltaMeters, 2),
               stepsDelta: stepsDeltaToReport,
@@ -658,7 +664,20 @@ export default function useDeviceCarbonTracker(
               confidence: round(lastStepConfidenceRef.current, 3),
               avgConfidence: round(averageStepConfidenceRef.current, 3),
               timestamp: new Date(now).toISOString(),
-            });
+            }).then((res) => {
+              if (res?.user?.score != null) {
+                setBackendScore(Number(res.user.score));
+              }
+              // net_carbon_impact is now a top-level field on the response for easy access.
+              // Fall back to the nested record path for backward compatibility.
+              const netImpact =
+                res?.net_carbon_impact ??
+                res?.record?.net_carbon_impact ??
+                res?.record?.carbon_emission;
+              if (netImpact != null) {
+                setBackendCarbonKg(Number(netImpact));
+              }
+            }).catch(() => { /* silently ignore offline / backend-down */ });
           }
 
           scheduleNextSample();
@@ -819,7 +838,7 @@ export default function useDeviceCarbonTracker(
   }, [supported.battery, userEmail]);
 
   return {
-    carbon,
+    carbon: backendCarbonKg !== null ? backendCarbonKg : carbon,
     batteryUsed,
     distance,
     gpsDistance,
@@ -849,6 +868,8 @@ export default function useDeviceCarbonTracker(
     chargingEnergyKwh,
     chargingCarbonKg,
     batteryAlert,
+    backendScore,
+    backendCarbonKg,
     supported,
     requestMotionAccess,
     dismissBatteryAlert,

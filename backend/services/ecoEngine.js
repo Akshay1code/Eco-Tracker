@@ -202,12 +202,26 @@ function calculateTaskStatus(record) {
 function applyGamification(record) {
   const taskStatus = calculateTaskStatus(record);
   const taskBonus = taskStatus.filter((task) => task.completed).reduce((sum, task) => sum + task.reward_xp, 0);
-  const baseFactor = clamp(1 - record.carbon_emission / CARBON_BASELINE_KG, 0, 1);
+
+  // Emission penalty: scales base XP down as gross carbon increases (capped at baseline)
+  const emissionFactor = clamp(1 - record.gross_carbon_impact / CARBON_BASELINE_KG, 0, 1);
+
+  // Activity bonus: reward walking/running distance (1 XP per 10 m walked/run)
+  const activityDistanceM = toPositiveNumber(record.activity_distance) * 1000;
+  const activityBonus = Math.min(Math.round(activityDistanceM / 10), 100);
+
+  // Carbon savings bonus: 500 XP per kg CO₂ saved (walking instead of driving)
+  const savingsBonus = Math.min(Math.round(toPositiveNumber(record.carbon_saved) * 500), 150);
 
   record.task_status = taskStatus;
-  record.xp_earned = Math.round(BASE_XP * baseFactor + taskBonus);
+  record.xp_earned = Math.round(BASE_XP * emissionFactor + taskBonus + activityBonus + savingsBonus);
   record.eco_score = clamp(
-    Math.round(baseFactor * 100 + taskStatus.filter((task) => task.completed).length * 5),
+    Math.round(
+      emissionFactor * 80 +
+      taskStatus.filter((task) => task.completed).length * 5 +
+      (activityBonus > 0 ? 10 : 0) +
+      (savingsBonus > 0 ? 5 : 0)
+    ),
     0,
     100
   );
@@ -224,14 +238,16 @@ function pushLimited(array, entry, maxEntries = 50) {
 }
 
 function calculateTransportImpact(activityType, distanceMeters) {
-  const normalizedActivity = typeof activityType === 'string' ? activityType.toLowerCase() : 'walking';
+  const normalizedActivity = typeof activityType === 'string' ? activityType.toLowerCase().trim() : 'walking';
   const distanceKm = Math.max(0, Number(distanceMeters || 0)) / 1000;
 
   if (!distanceKm) {
     return { emittedKg: 0, savedKg: 0, direction: 'neutral' };
   }
 
-  if (normalizedActivity === 'vehicle' || normalizedActivity === 'transport' || normalizedActivity === 'driving') {
+  // Motor vehicle activities — emit carbon
+  const isVehicle = ['vehicle', 'transport', 'driving', 'car', 'motorbike', 'bike'].includes(normalizedActivity);
+  if (isVehicle) {
     return {
       emittedKg: round(distanceKm * VEHICLE_EMISSION_KG_PER_KM),
       savedKg: 0,
@@ -239,11 +255,19 @@ function calculateTransportImpact(activityType, distanceMeters) {
     };
   }
 
-  return {
-    emittedKg: 0,
-    savedKg: round(distanceKm * ACTIVE_TRAVEL_SAVED_KG_PER_KM),
-    direction: 'saved',
-  };
+  // Active / zero-emission travel (walking, running, cycling, idle, unknown)
+  // Idle has distance 0 so savedKg will be 0 anyway; explicit handling avoids confusion
+  const isActiveTravel = ['walking', 'running', 'cycling', 'walk', 'run', 'cycle'].includes(normalizedActivity);
+  if (isActiveTravel) {
+    return {
+      emittedKg: 0,
+      savedKg: round(distanceKm * ACTIVE_TRAVEL_SAVED_KG_PER_KM),
+      direction: 'saved',
+    };
+  }
+
+  // idle or unrecognised — no impact
+  return { emittedKg: 0, savedKg: 0, direction: 'neutral' };
 }
 
 export function applyActivityTrigger(record, payload) {
