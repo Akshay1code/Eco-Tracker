@@ -31,11 +31,7 @@ function isPrivateDevelopmentOrigin(origin) {
     }
 
     const hostname = parsed.hostname;
-    const port = parsed.port;
-
-    if (port !== '5173') {
-      return false;
-    }
+    // Allow any Vite dev-server port (5173, 5174, …) on private/loopback addresses
 
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return true;
@@ -74,7 +70,7 @@ function createCorsOptions() {
       callback(new Error(`[eco-backend] CORS blocked for origin: ${origin}`));
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   };
 }
