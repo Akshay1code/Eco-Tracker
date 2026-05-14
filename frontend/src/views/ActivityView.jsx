@@ -7,11 +7,15 @@ import {
   MdDirectionsBike,
   MdDirectionsWalk,
   MdEmojiEvents,
+  MdErrorOutline,
   MdListAlt,
+  MdLink,
   MdLocalFireDepartment,
   MdMilitaryTech,
   MdPieChart,
+  MdRefresh,
   MdSearch,
+  MdSensors,
   MdStraighten,
   MdTimer,
   MdTrackChanges,
@@ -35,7 +39,9 @@ import clsx from 'clsx';
 import TopBar from '../components/layout/TopBar.jsx';
 import useDailyActivityRecords from '../hooks/useDailyActivityRecords.js';
 import useDeviceCarbonTracker from '../hooks/useDeviceCarbonTracker.ts';
+import useGoogleFit from '../hooks/useGoogleFit.js';
 import '../styles/activity.css';
+import '../styles/googleFit.css';
 
 const KG_PER_KM_CAR = 0.192;
 
@@ -66,19 +72,43 @@ function getNumericValue(value) {
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
+function formatFitTimestamp(value) {
+  if (!value) {
+    return 'Waiting for first sync';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return 'Waiting for first sync';
+  }
+
+  return `Last synced ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+}
+
 export default function ActivityView({ onLogout }) {
   const storedEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
   const { records, todayRecord } = useDailyActivityRecords(storedEmail);
   const tracker = useDeviceCarbonTracker(storedEmail, todayRecord);
+  const {
+    fitConfigured,
+    fitConnected,
+    fitError,
+    fitSnapshot,
+    fitSyncing,
+    connectGoogleFit,
+    disconnectGoogleFit,
+    syncNow,
+  } = useGoogleFit(storedEmail);
 
   const [chartMode, setChartMode] = useState('CO2');
   const [logFilter, setLogFilter] = useState('All');
   const [logSearch, setLogSearch] = useState('');
 
-  const liveSteps = tracker.steps;
-  const liveDistance = tracker.distance;
-  const liveActiveMin = tracker.activeMinutes;
-  const liveCalories = tracker.caloriesBurned;
+  const fitLive = fitConnected && fitSnapshot;
+  const liveSteps = fitLive ? getNumericValue(fitSnapshot.steps) : tracker.steps;
+  const liveDistance = fitLive ? getNumericValue(fitSnapshot.distanceKm) : tracker.distance;
+  const liveActiveMin = fitLive ? getNumericValue(fitSnapshot.activeMinutes) : tracker.activeMinutes;
+  const liveCalories = fitLive ? getNumericValue(fitSnapshot.calories) : tracker.caloriesBurned;
   const liveNetCarbonImpact = todayRecord
     ? getNumericValue(todayRecord.net_carbon_impact ?? todayRecord.carbon_emission)
     : tracker.carbon;
@@ -285,8 +315,118 @@ export default function ActivityView({ onLogout }) {
     <div className="activity-page">
       <TopBar activeTab="activity" onLogout={onLogout} />
 
+      {fitConfigured ? (
+        fitConnected ? (
+          <section className="gfit-sync-panel">
+            <div className="gfit-sync-header">
+              <div className="gfit-sync-title-group">
+                <div className="gfit-badge-connected">
+                  <span className="gfit-badge-dot" />
+                  Connected
+                </div>
+                <div>
+                  <h2 className="gfit-sync-title">Google Fit sync is active</h2>
+                  <div className="activity-section-subtitle" style={{ margin: '0.25rem 0 0', color: '#90caf9' }}>
+                    Activity totals from Google Fit are feeding today&apos;s eco record.
+                  </div>
+                </div>
+              </div>
+
+              <div className="gfit-sync-actions">
+                <button type="button" className="gfit-sync-btn" onClick={syncNow} disabled={fitSyncing}>
+                  <MdRefresh />
+                  {fitSyncing ? 'Syncing...' : 'Sync now'}
+                </button>
+                <button type="button" className="gfit-disconnect-btn" onClick={disconnectGoogleFit}>
+                  Disconnect
+                </button>
+              </div>
+            </div>
+
+            <div className="gfit-metrics-grid">
+              <div className="gfit-metric-card">
+                <div className="gfit-metric-icon"><MdDirectionsWalk /></div>
+                <div className="gfit-metric-value">{liveSteps.toLocaleString()}</div>
+                <div className="gfit-metric-label">Steps</div>
+              </div>
+              <div className="gfit-metric-card">
+                <div className="gfit-metric-icon"><MdStraighten /></div>
+                <div className="gfit-metric-value">{liveDistance.toFixed(2)}</div>
+                <div className="gfit-metric-label">Distance (km)</div>
+              </div>
+              <div className="gfit-metric-card">
+                <div className="gfit-metric-icon"><MdLocalFireDepartment /></div>
+                <div className="gfit-metric-value">{liveCalories.toFixed(0)}</div>
+                <div className="gfit-metric-label">Calories</div>
+              </div>
+              <div className="gfit-metric-card">
+                <div className="gfit-metric-icon"><MdTimer /></div>
+                <div className="gfit-metric-value">{liveActiveMin.toFixed(0)}</div>
+                <div className="gfit-metric-label">Active min</div>
+              </div>
+              <div className="gfit-metric-card">
+                <div className="gfit-metric-icon"><MdTrackChanges /></div>
+                <div className="gfit-metric-value" style={{ fontSize: '1rem', lineHeight: 1.2 }}>
+                  {(fitSnapshot?.activityType || 'idle').replace(/^./, (char) => char.toUpperCase())}
+                </div>
+                <div className="gfit-metric-label">Detected activity</div>
+              </div>
+            </div>
+
+            <div className="gfit-sync-footer">
+              <div className="gfit-sync-timestamp">{formatFitTimestamp(fitSnapshot?.syncedAt)}</div>
+              {fitSyncing ? (
+                <div className="gfit-syncing-row">
+                  <span className="gfit-spinner" />
+                  Syncing with Google Fit and backend
+                </div>
+              ) : null}
+            </div>
+
+            {fitError ? (
+              <div className="gfit-error-bar">
+                <MdErrorOutline />
+                {fitError}
+              </div>
+            ) : null}
+          </section>
+        ) : (
+          <section className="gfit-connect-banner">
+            <div className="gfit-logo-wrap">
+              <MdSensors />
+            </div>
+            <div className="gfit-connect-text">
+              <h2 className="gfit-connect-title">Connect Google Fit</h2>
+              <p className="gfit-connect-sub">
+                Sync authoritative steps, distance, calories, and active minutes into your eco activity record.
+              </p>
+              <p className="gfit-setup-note">
+                Your device tracker still works without this, but Fit gives you a cleaner daily source of truth.
+              </p>
+            </div>
+            <button type="button" className="gfit-connect-btn" onClick={connectGoogleFit}>
+              <MdLink />
+              Connect now
+            </button>
+          </section>
+        )
+      ) : (
+        <section className="activity-card activity-card-padded">
+          <div className="records-card-title" style={{ marginBottom: '0.5rem' }}>
+            <MdSensors style={{ color: '#1565c0', fontSize: '1.25rem' }} />
+            Google Fit is available
+          </div>
+          <p className="activity-section-subtitle" style={{ marginBottom: 0 }}>
+            Add `VITE_GOOGLE_FIT_CLIENT_ID` to `frontend/.env` to enable OAuth and daily Fit sync.
+          </p>
+        </section>
+      )}
+
       <section>
-        <h2 className="activity-section-title">Live Stats</h2>
+        <h2 className="activity-section-title">
+          Live Stats
+          {fitConnected ? <span className="gfit-source-tag">Google Fit Source</span> : null}
+        </h2>
         <p className="activity-section-subtitle">Real-time metrics for today</p>
         <div className="activity-live-grid">
           {LIVE_STATS_MAP.map((stat) => {
@@ -310,7 +450,7 @@ export default function ActivityView({ onLogout }) {
                 </div>
                 <div>
                   <div className="live-stat-value" style={{ color: stat.color }}>
-                    {stat.value}
+                    {stat.id === 'steps' ? Number(stat.value).toLocaleString() : stat.value}
                   </div>
                   <div className="live-stat-label">{stat.label}</div>
                   <div className="live-stat-sublabel">{stat.sublabel}</div>

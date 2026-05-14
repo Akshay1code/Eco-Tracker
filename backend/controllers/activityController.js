@@ -1,6 +1,12 @@
 import { getDailyRecord, listDailyRecords, mutateDailyRecord } from '../models/activityModel.js';
 import { findUserByUserId, syncUserProgress, toPublicUser } from '../models/userModel.js';
-import { applyActivityTrigger, applyBatteryTrigger, applyTimeTrigger, getRecordDate } from '../services/ecoEngine.js';
+import {
+  applyActivityTrigger,
+  applyBatteryTrigger,
+  applyGoogleFitSync,
+  applyTimeTrigger,
+  getRecordDate,
+} from '../services/ecoEngine.js';
 import { getDatabaseStatus } from '../db.js';
 
 function normalizeUserId(value) {
@@ -167,6 +173,67 @@ export async function postBatteryTrigger(body = {}) {
       date: record.date,
       user,
       ...result,
+    },
+  };
+}
+
+/**
+ * postGoogleFitTrigger
+ * --------------------
+ * Accepts authoritative daily activity data from the Google Fit REST API
+ * (fetched in the browser by useGoogleFit) and applies it to the user's
+ * daily record via applyGoogleFitSync in the eco-engine.
+ *
+ * Expected body: { userId, steps, distanceMeters, calories, activeMinutes, activityType, timestamp }
+ */
+export async function postGoogleFitTrigger(body = {}) {
+  const userId = resolveUserId(body);
+  const missingUserId = requireUserId(userId);
+  if (missingUserId) {
+    return missingUserId;
+  }
+
+  // Light input validation — values must be non-negative numbers
+  const steps = Number(body.steps || 0);
+  const distanceMeters = Number(body.distanceMeters || 0);
+  const activeMinutes = Number(body.activeMinutes || 0);
+
+  if (!Number.isFinite(steps) || !Number.isFinite(distanceMeters) || !Number.isFinite(activeMinutes)) {
+    return {
+      status: 400,
+      payload: { error: 'steps, distanceMeters, and activeMinutes must be valid numbers.' },
+    };
+  }
+
+  if (steps < 0 || distanceMeters < 0 || activeMinutes < 0) {
+    return {
+      status: 400,
+      payload: { error: 'steps, distanceMeters, and activeMinutes must be >= 0.' },
+    };
+  }
+
+  const { previousRecord, record, result } = await mutateDailyRecord(
+    userId,
+    body.timestamp,
+    (dailyRecord) => applyGoogleFitSync(dailyRecord, body)
+  );
+
+  const user = await syncProgressForRecord(userId, previousRecord, record);
+
+  return {
+    status: 200,
+    payload: {
+      success: true,
+      trigger: 'google_fit',
+      source: 'google_fit',
+      date: record.date,
+      user,
+      ...result,
+      // Surface key metrics at the top level for easy client access
+      net_carbon_impact: record.net_carbon_impact,
+      carbon_saved: record.carbon_saved,
+      xp_earned: record.xp_earned,
+      eco_score: record.eco_score,
     },
   };
 }

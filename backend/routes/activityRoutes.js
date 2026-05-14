@@ -4,6 +4,7 @@ import {
   getHealth,
   postActivityTrigger,
   postBatteryTrigger,
+  postGoogleFitTrigger,
   postTimeTrigger,
 } from '../controllers/activityController.js';
 
@@ -60,5 +61,22 @@ export function createActivityRouter() {
     })
   );
 
+  /**
+   * POST /api/triggers/google-fit
+   * Receives authoritative daily activity data fetched from the Google Fit
+   * REST API by the browser (useGoogleFit hook) and applies it to the user's
+   * eco record via applyGoogleFitSync in the eco-engine.
+   *
+   * Body: { userId, steps, distanceMeters, calories, activeMinutes, activityType, timestamp }
+   */
+  router.post(
+    '/triggers/google-fit',
+    asyncRoute(async (request, response) => {
+      const result = await postGoogleFitTrigger(request.body);
+      response.status(result.status).json(result.payload);
+    })
+  );
+
   return router;
 }
+

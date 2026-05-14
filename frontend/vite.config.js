@@ -8,4 +8,7 @@ const frontendRoot = fileURLToPath(new URL('.', import.meta.url))
 export default defineConfig({
   root: frontendRoot,
   plugins: [react()],
+  server: {
+    host: true,
+  },
 })

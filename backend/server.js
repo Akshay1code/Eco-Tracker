@@ -23,12 +23,50 @@ function getAllowedOrigins() {
   return Array.from(new Set([...defaultOrigins, ...configuredOrigins]));
 }
 
+function isPrivateDevelopmentOrigin(origin) {
+  try {
+    const parsed = new URL(origin);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return false;
+    }
+
+    const hostname = parsed.hostname;
+    const port = parsed.port;
+
+    if (port !== '5173') {
+      return false;
+    }
+
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return true;
+    }
+
+    if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+      return true;
+    }
+
+    if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+      return true;
+    }
+
+    const match172 = hostname.match(/^172\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/);
+    if (match172) {
+      const secondOctet = Number(match172[1]);
+      return secondOctet >= 16 && secondOctet <= 31;
+    }
+  } catch {
+    return false;
+  }
+
+  return false;
+}
+
 function createCorsOptions() {
   const allowedOrigins = getAllowedOrigins();
 
   return {
     origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || allowedOrigins.includes(origin) || isPrivateDevelopmentOrigin(origin)) {
         callback(null, true);
         return;
       }

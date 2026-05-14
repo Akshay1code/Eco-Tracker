@@ -41,6 +41,15 @@ export function sendTimeTrigger(payload) {
 export function sendBatteryTrigger(payload) {
   return postTrigger('/api/triggers/battery', payload);
 }
+/**
+ * Sends Google Fit daily aggregate data to the backend for authoritative
+ * carbon/XP recalculation. Called by useGoogleFit after every successful sync.
+ *
+ * @param {{ userId, steps, distanceMeters, calories, activeMinutes, activityType, timestamp }} payload
+ */
+export function sendGoogleFitTrigger(payload) {
+  return postTrigger('/api/triggers/google-fit', payload);
+}
 
 export async function fetchDailyActivityRecords(userId) {
   const normalizedUserId = normalizeUserId(userId);

@@ -443,3 +443,65 @@ export function applyBatteryTrigger(record, payload) {
     record: applyGamification(record),
   };
 }
+
+/**
+ * applyGoogleFitSync
+ * ------------------
+ * Applies authoritative daily activity totals from the Google Fit REST API.
+ * Unlike applyActivityTrigger (which accumulates deltas), this function
+ * REPLACES the record's activity fields with Fit's verified daily totals,
+ * then recomputes all derived carbon / gamification metrics.
+ *
+ * @param {object} record        - The hydrated daily activity record (mutated in place).
+ * @param {object} payload       - Fit sync payload from the frontend.
+ * @param {number} payload.steps            - Total steps today (from Fit).
+ * @param {number} payload.distanceMeters   - Total distance in metres today (from Fit).
+ * @param {number} payload.calories         - Total calories burned today (from Fit).
+ * @param {number} payload.activeMinutes    - Total active minutes today (from Fit).
+ * @param {string} payload.activityType     - Dominant activity ('walking'|'running'|'biking'|'vehicle'|'idle').
+ * @param {string} [payload.timestamp]      - ISO timestamp of the sync event.
+ * @returns {{ updated: boolean, record: object }}
+ */
+export function applyGoogleFitSync(record, payload) {
+  const steps = Math.max(0, Math.floor(Number(payload.steps || 0)));
+  const distanceMeters = Math.max(0, Number(payload.distanceMeters || 0));
+  const activeMinutes = Math.max(0, Number(payload.activeMinutes || 0));
+  const calories = Math.max(0, Number(payload.calories || 0));
+  const activityType = typeof payload.activityType === 'string' ? payload.activityType : 'walking';
+  const timestamp = payload.timestamp || new Date().toISOString();
+  const distanceKm = distanceMeters / 1000;
+
+  // Replace accumulated GPS/pedometer totals with Fit's verified daily values.
+  record.steps = steps;
+  record.active_time = round(activeMinutes, 2);
+  record.activity_distance = round(distanceKm, 3);
+
+  // Recalculate transport carbon impact using Fit's distance + dominant activity.
+  const transportImpact = calculateTransportImpact(activityType, distanceMeters);
+  record.transport_carbon_emission = round(transportImpact.emittedKg);
+  record.carbon_saved = round(transportImpact.savedKg);
+
+  // Log the Fit sync as a single activity_logs entry tagged with the source.
+  pushLimited(record.activity_logs, {
+    timestamp,
+    distance_moved: round(distanceMeters, 2),
+    activity: activityType,
+    carbon_delta_kg: round(transportImpact.emittedKg || transportImpact.savedKg),
+    carbon_direction: transportImpact.direction,
+    net_impact_delta_kg: round(transportImpact.emittedKg - transportImpact.savedKg),
+    cadence_spm: 0,
+    confidence: 1.0,        // Fit data is considered authoritative
+    source: 'google_fit',
+    calories_kcal: calories,
+  });
+
+  record.pending_activity.detected = activeMinutes > 0;
+
+  recomputeImpactMetrics(record);
+
+  return {
+    updated: true,
+    source: 'google_fit',
+    record: applyGamification(record),
+  };
+}
