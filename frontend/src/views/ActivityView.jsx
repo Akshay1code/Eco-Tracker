@@ -72,6 +72,15 @@ function getNumericValue(value) {
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
+function resolvePreferredMetric(fitValue, fallbackValue) {
+  const normalizedFitValue = getNumericValue(fitValue);
+  if (normalizedFitValue > 0) {
+    return normalizedFitValue;
+  }
+
+  return getNumericValue(fallbackValue);
+}
+
 function formatFitTimestamp(value) {
   if (!value) {
     return 'Waiting for first sync';
@@ -105,10 +114,16 @@ export default function ActivityView({ onLogout }) {
   const [logSearch, setLogSearch] = useState('');
 
   const fitLive = fitConnected && fitSnapshot;
-  const liveSteps = fitLive ? getNumericValue(fitSnapshot.steps) : tracker.steps;
-  const liveDistance = fitLive ? getNumericValue(fitSnapshot.distanceKm) : tracker.distance;
-  const liveActiveMin = fitLive ? getNumericValue(fitSnapshot.activeMinutes) : tracker.activeMinutes;
-  const liveCalories = fitLive ? getNumericValue(fitSnapshot.calories) : tracker.caloriesBurned;
+  const fitHasQuantifiedData = fitLive && (
+    getNumericValue(fitSnapshot.steps) > 0 ||
+    getNumericValue(fitSnapshot.distanceKm) > 0 ||
+    getNumericValue(fitSnapshot.activeMinutes) > 0 ||
+    getNumericValue(fitSnapshot.calories) > 0
+  );
+  const liveSteps = fitLive ? resolvePreferredMetric(fitSnapshot.steps, tracker.steps) : tracker.steps;
+  const liveDistance = fitLive ? resolvePreferredMetric(fitSnapshot.distanceKm, tracker.distance) : tracker.distance;
+  const liveActiveMin = fitLive ? resolvePreferredMetric(fitSnapshot.activeMinutes, tracker.activeMinutes) : tracker.activeMinutes;
+  const liveCalories = fitLive ? resolvePreferredMetric(fitSnapshot.calories, tracker.caloriesBurned) : tracker.caloriesBurned;
   const liveNetCarbonImpact = todayRecord
     ? getNumericValue(todayRecord.net_carbon_impact ?? todayRecord.carbon_emission)
     : tracker.carbon;
@@ -381,6 +396,11 @@ export default function ActivityView({ onLogout }) {
                   Syncing with Google Fit and backend
                 </div>
               ) : null}
+              {fitLive && !fitHasQuantifiedData ? (
+                <div className="gfit-syncing-row">
+                  Showing phone tracker data until Google Fit returns today&apos;s totals.
+                </div>
+              ) : null}
             </div>
 
             {fitError ? (
@@ -425,7 +445,11 @@ export default function ActivityView({ onLogout }) {
       <section>
         <h2 className="activity-section-title">
           Live Stats
-          {fitConnected ? <span className="gfit-source-tag">Google Fit Source</span> : null}
+          {fitConnected ? (
+            <span className="gfit-source-tag">
+              {fitHasQuantifiedData ? 'Google Fit Source' : 'Phone Tracker Fallback'}
+            </span>
+          ) : null}
         </h2>
         <p className="activity-section-subtitle">Real-time metrics for today</p>
         <div className="activity-live-grid">
