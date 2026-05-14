@@ -174,6 +174,14 @@ if (isDirectRun) {
     const app = await createApp();
     app.listen(DEFAULT_PORT, () => {
       console.log(`[eco-backend] listening on http://localhost:${DEFAULT_PORT}`);
+      // Eagerly warm up the DB connection so the first API request is instant.
+      initializeDataLayer()
+        .then(() => {
+          console.log('[eco-backend] MongoDB Atlas connected and ready.');
+        })
+        .catch((error) => {
+          console.error('[eco-backend] DB warm-up failed (requests will retry):', error.message);
+        });
     });
   } catch (error) {
     console.error('[eco-backend] failed to start', error);
