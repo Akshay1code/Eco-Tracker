@@ -1,8 +1,14 @@
 function resolveApiBaseUrl() {
   const configured = import.meta.env.VITE_TRACKING_API_URL;
 
-  if (!configured) {
-    return 'http://localhost:3001';
+  // Production on Vercel: frontend and backend share the same origin.
+  // An empty (or missing) env var means use relative URLs (no hostname prefix).
+  if (!configured || configured.trim() === '') {
+    // In a real browser context, distinguish prod (same-origin) from local dev.
+    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      return ''; // Same-origin: /api/... will resolve correctly
+    }
+    return 'http://localhost:3001'; // Local dev fallback
   }
 
   if (typeof window === 'undefined') {

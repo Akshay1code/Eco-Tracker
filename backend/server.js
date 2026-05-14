@@ -14,6 +14,7 @@ function getAllowedOrigins() {
   const defaultOrigins = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
+    'https://eco-tracker-elpe.vercel.app',
     'https://eco-trackerv20.vercel.app',
   ];
   const configuredOrigins = typeof process.env.CORS_ALLOWED_ORIGINS === 'string'
