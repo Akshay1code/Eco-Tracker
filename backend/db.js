@@ -10,11 +10,31 @@ function normalizeProvider(value) {
   return ['auto', 'mongo', 'file'].includes(provider) ? provider : 'auto';
 }
 
+function normalizeBoolean(value, defaultValue = false) {
+  if (typeof value !== 'string') {
+    return defaultValue;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) {
+    return true;
+  }
+
+  if (['0', 'false', 'no', 'off'].includes(normalized)) {
+    return false;
+  }
+
+  return defaultValue;
+}
+
 const DEFAULT_URI = normalizeMongoUri(process.env.MONGODB_URI);
 const FALLBACK_URI = normalizeMongoUri(process.env.MONGODB_URI_FALLBACK);
 const DATABASE_NAME = process.env.MONGODB_DB_NAME || 'ecotrackerdb';
 const SERVER_SELECTION_TIMEOUT_MS = Number(process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS || 5000);
 const DATA_PROVIDER = normalizeProvider(process.env.DATA_PROVIDER);
+const NODE_ENV = typeof process.env.NODE_ENV === 'string' ? process.env.NODE_ENV.trim().toLowerCase() : '';
+const IS_PRODUCTION = NODE_ENV === 'production';
+const REQUIRE_ATLAS = normalizeBoolean(process.env.REQUIRE_MONGODB_ATLAS, IS_PRODUCTION);
 
 let clientPromise = null;
 let databaseInstance = null;
@@ -32,7 +52,7 @@ function isAtlasUri(uri) {
 }
 
 function canUseFileFallback() {
-  return DATA_PROVIDER !== 'mongo';
+  return DATA_PROVIDER !== 'mongo' && !REQUIRE_ATLAS;
 }
 
 function activateFileStore(reason = null) {
@@ -96,13 +116,19 @@ async function connectClient(uri) {
 function assertPrimaryConfiguration(uri) {
   if (!uri) {
     throw new Error(
-      '[eco-backend] MONGODB_URI is required when DATA_PROVIDER is set to "mongo".'
+      '[eco-backend] MONGODB_URI is required when MongoDB is enforced.'
     );
   }
 
   if (!isMongoUri(uri)) {
     throw new Error(
       `[eco-backend] MONGODB_URI must be a valid MongoDB connection string. Received: ${uri}`
+    );
+  }
+
+  if (REQUIRE_ATLAS && !isAtlasUri(uri)) {
+    throw new Error(
+      '[eco-backend] MONGODB_URI must point to a MongoDB Atlas cluster when REQUIRE_MONGODB_ATLAS is enabled.'
     );
   }
 }
@@ -113,6 +139,12 @@ function assertFallbackConfiguration(uri) {
   }
 
   if (isMongoUri(uri)) {
+    if (REQUIRE_ATLAS && !isAtlasUri(uri)) {
+      throw new Error(
+        '[eco-backend] MONGODB_URI_FALLBACK must also point to MongoDB Atlas when REQUIRE_MONGODB_ATLAS is enabled.'
+      );
+    }
+
     return;
   }
 

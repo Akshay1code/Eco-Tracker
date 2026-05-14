@@ -14,6 +14,7 @@ function getAllowedOrigins() {
   const defaultOrigins = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
+    'https://eco-tracker-elpe.vercel.app',
     'https://eco-trackerv20.vercel.app',
   ];
   const configuredOrigins = typeof process.env.CORS_ALLOWED_ORIGINS === 'string'
@@ -31,11 +32,7 @@ function isPrivateDevelopmentOrigin(origin) {
     }
 
     const hostname = parsed.hostname;
-    const port = parsed.port;
-
-    if (port !== '5173') {
-      return false;
-    }
+    // Allow any Vite dev-server port (5173, 5174, …) on private/loopback addresses
 
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return true;
@@ -74,7 +71,7 @@ function createCorsOptions() {
       callback(new Error(`[eco-backend] CORS blocked for origin: ${origin}`));
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   };
 }
@@ -174,6 +171,14 @@ if (isDirectRun) {
     const app = await createApp();
     app.listen(DEFAULT_PORT, () => {
       console.log(`[eco-backend] listening on http://localhost:${DEFAULT_PORT}`);
+      // Eagerly warm up the DB connection so the first API request is instant.
+      initializeDataLayer()
+        .then(() => {
+          console.log('[eco-backend] MongoDB Atlas connected and ready.');
+        })
+        .catch((error) => {
+          console.error('[eco-backend] DB warm-up failed (requests will retry):', error.message);
+        });
     });
   } catch (error) {
     console.error('[eco-backend] failed to start', error);
