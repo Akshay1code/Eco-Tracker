@@ -143,10 +143,8 @@ export default function ActivityView({ onLogout }) {
   const liveMovementLabel = tracker.movementLabel;
   const liveDetectionNote =
     tracker.movementMode === 'idle'
-      ? 'Waiting for enough movement to classify your travel mode.'
-      : tracker.movementMode === 'walking' || tracker.movementMode === 'running'
-        ? 'Detected from phone motion sensors and live cadence.'
-        : 'Estimated from GPS speed and step rhythm, so vehicle labels are best-effort.';
+      ? 'Waiting for enough GPS speed data to classify your travel mode.'
+      : 'Estimated from live GPS speed only.';
 
   const LIVE_STATS_MAP = useMemo(
     () => [

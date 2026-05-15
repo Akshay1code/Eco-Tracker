@@ -218,43 +218,30 @@ function deriveActivityFromSignals(
   return 'idle';
 }
 
-function deriveMovementMode(activity: ActivityKind, speedKmh: number, cadenceSpm: number): MovementMode {
+function deriveMovementMode(speedKmh: number): MovementMode {
   const normalizedSpeedKmh = Math.max(0, Number(speedKmh || 0));
-  const normalizedCadenceSpm = Math.max(0, Number(cadenceSpm || 0));
 
-  if (activity === 'running' || normalizedCadenceSpm >= 145) {
-    return 'running';
+  if (normalizedSpeedKmh < 1) {
+    return 'idle';
   }
 
-  if (activity === 'vehicle') {
-    if (normalizedSpeedKmh < 22) {
-      return 'two_wheeler';
-    }
-
-    if (normalizedSpeedKmh < 55) {
-      return 'car_or_bus';
-    }
-
-    return 'train_or_metro';
-  }
-
-  if (activity === 'walking') {
-    if (normalizedSpeedKmh >= 9 && normalizedCadenceSpm < 135) {
-      return 'cycling';
-    }
-
+  if (normalizedSpeedKmh < 6) {
     return 'walking';
   }
 
-  if (normalizedSpeedKmh >= 9 && normalizedSpeedKmh < 20 && normalizedCadenceSpm < 120) {
-    return 'cycling';
+  if (normalizedSpeedKmh < 12) {
+    return 'running';
   }
 
-  if (normalizedSpeedKmh >= 20 && normalizedSpeedKmh < 55) {
+  if (normalizedSpeedKmh < 30) {
+    return 'two_wheeler';
+  }
+
+  if (normalizedSpeedKmh < 60) {
     return 'car_or_bus';
   }
 
-  if (normalizedSpeedKmh >= 55) {
+  if (normalizedSpeedKmh >= 60) {
     return 'train_or_metro';
   }
 
@@ -371,8 +358,8 @@ export default function useDeviceCarbonTracker(
     [persistedBaseline.distanceKm, sessionDistance]
   );
   const movementMode = useMemo(
-    () => deriveMovementMode(activity, speed, cadence),
-    [activity, cadence, speed]
+    () => deriveMovementMode(speed),
+    [speed]
   );
   const movementLabel = useMemo(
     () => formatMovementLabel(movementMode),
