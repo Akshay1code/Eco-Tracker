@@ -165,7 +165,7 @@ export default function useGoogleFit(userEmail) {
     }
   }
 
-  // ─── Re-connect from sessionStorage on mount ───────────────────────────────
+  // ─── Re-connect from sessionStorage on mount & Window Visibility ─────────
   useEffect(() => {
     isMountedRef.current = true;
 
@@ -179,13 +179,68 @@ export default function useGoogleFit(userEmail) {
       startSyncInterval(stored);
     }
 
+    // Smart Refresh Logic: Trigger sync when window regains focus or tab becomes visible
+    // This helps recover from browser background throttling.
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && tokenRef.current) {
+        performSync(tokenRef.current);
+      }
+    };
+
+    const handleFocus = () => {
+      if (tokenRef.current) {
+        performSync(tokenRef.current);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
     return () => {
       isMountedRef.current = false;
       stopSyncInterval();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
     };
     // Only run on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ─── Hardware Motion Sync ──────────────────────────────────────────────────
+  // Proactively triggers a Google Fit sync when the accelerometer detects walking.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('DeviceMotionEvent' in window)) return;
+
+    let motionTimeout = null;
+
+    const handleMotion = (event) => {
+      if (!tokenRef.current) return;
+
+      const acc = event.accelerationIncludingGravity;
+      if (!acc) return;
+      
+      const magnitude = Math.sqrt((acc.x || 0) ** 2 + (acc.y || 0) ** 2 + (acc.z || 0) ** 2);
+      
+      // Standard gravity is ~9.8. Magnitudes significantly higher/lower indicate movement.
+      if (Math.abs(magnitude - 9.8) > 2.0) {
+        if (!motionTimeout) {
+          // Debounce: Wait 3 seconds after walking starts to allow steps to accumulate in Fit
+          motionTimeout = setTimeout(() => {
+            if (tokenRef.current) {
+              performSync(tokenRef.current);
+            }
+            motionTimeout = null;
+          }, 3000);
+        }
+      }
+    };
+
+    window.addEventListener('devicemotion', handleMotion);
+    return () => {
+      window.removeEventListener('devicemotion', handleMotion);
+      if (motionTimeout) clearTimeout(motionTimeout);
+    };
+  }, [performSync]);
 
   // ─── Public API ────────────────────────────────────────────────────────────
 
