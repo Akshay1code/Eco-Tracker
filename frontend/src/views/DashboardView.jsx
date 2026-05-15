@@ -100,6 +100,27 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
         onLogout={onLogout}
       />
 
+      {tracker.supported.motion && tracker.motionPermission !== 'granted' ? (
+        <section className="card-white" style={{ padding: 16, marginTop: 20 }}>
+          <h3 style={{ color: 'var(--forest)', fontSize: 18, marginBottom: 8 }}>Enable motion tracking</h3>
+          <p style={{ color: 'var(--gray-600)', margin: 0, lineHeight: 1.6 }}>
+            {tracker.motionPermission === 'denied'
+              ? 'Motion permission is currently blocked, so step updates may stop or lag behind.'
+              : 'Allow motion sensors to keep step counting continuous and more accurate on mobile browsers.'}
+          </p>
+          <button
+            type="button"
+            className="mini-btn"
+            onClick={() => {
+              void tracker.requestMotionAccess();
+            }}
+            style={{ marginTop: 12 }}
+          >
+            {tracker.motionPermission === 'denied' ? 'Try again' : 'Enable now'}
+          </button>
+        </section>
+      ) : null}
+
       <HeroCard deviceData={dashboardData} compact />
 
       <div className="two-col" style={{ marginTop: 20 }}>

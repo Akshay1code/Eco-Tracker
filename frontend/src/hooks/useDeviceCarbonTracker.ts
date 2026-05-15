@@ -28,6 +28,13 @@ interface PersistedDailyRecord {
   activity_distance?: number;
 }
 
+interface CachedDailyTotals {
+  date: string;
+  steps: number;
+  activeMinutes: number;
+  distanceKm: number;
+}
+
 export interface DeviceCarbonData {
   carbon: number;
   batteryUsed: number;
@@ -89,6 +96,7 @@ const TIME_TRIGGER_INTERVAL_MS = 15 * 60_000;
 const CHARGER_POWER_WATTS = 15;
 const GRID_EMISSION_FACTOR = 0.727;
 const DAY_CHECK_INTERVAL_MS = 30_000;
+const DAILY_TOTALS_CACHE_PREFIX = 'eco_tracker_totals';
 
 function getCurrentDayKey() {
   return new Date().toISOString().slice(0, 10);
@@ -104,6 +112,63 @@ function round(value: number, digits = 3) {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
+}
+
+function getDailyTotalsCacheKey(userEmail: string | null, dateKey: string) {
+  if (!userEmail || !dateKey) {
+    return '';
+  }
+
+  return `${DAILY_TOTALS_CACHE_PREFIX}:${userEmail.toLowerCase()}:${dateKey}`;
+}
+
+function readCachedDailyTotals(userEmail: string | null, dateKey: string): CachedDailyTotals | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const storageKey = getDailyTotalsCacheKey(userEmail, dateKey);
+  if (!storageKey) {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(storageKey);
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!parsed || parsed.date !== dateKey) {
+      return null;
+    }
+
+    return {
+      date: dateKey,
+      steps: Math.max(0, Number(parsed.steps || 0)),
+      activeMinutes: Math.max(0, round(Number(parsed.activeMinutes || 0), 2)),
+      distanceKm: Math.max(0, Number(parsed.distanceKm || 0)),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedDailyTotals(userEmail: string | null, payload: CachedDailyTotals) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const storageKey = getDailyTotalsCacheKey(userEmail, payload.date);
+  if (!storageKey) {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(payload));
+  } catch {
+    // Ignore storage write failures in restricted/private contexts.
+  }
 }
 
 function distanceKm(prev: GeoPoint, curr: GeoPoint) {
@@ -241,12 +306,20 @@ export default function useDeviceCarbonTracker(
     [persistedBaseline.distanceKm, sessionDistance]
   );
 
-  const buildBaseline = useCallback((dateKey: string, record: PersistedDailyRecord | null = null) => ({
-    date: dateKey,
-    steps: Math.max(0, Number(record?.steps || 0)),
-    activeMinutes: Math.max(0, round(Number(record?.active_time || 0), 2)),
-    distanceKm: Math.max(0, Number(record?.activity_distance || 0)),
-  }), []);
+  const buildBaseline = useCallback((dateKey: string, record: PersistedDailyRecord | null = null) => {
+    const cached = readCachedDailyTotals(userEmail, dateKey);
+    const recordSteps = Math.max(0, Number(record?.steps || 0));
+    const recordActiveMinutes = Math.max(0, round(Number(record?.active_time || 0), 2));
+    const recordDistanceKm = Math.max(0, Number(record?.activity_distance || 0));
+
+    return {
+      date: dateKey,
+      // Prefer the best known daily total so reloads do not drop unsynced local progress.
+      steps: Math.max(recordSteps, cached?.steps || 0),
+      activeMinutes: Math.max(recordActiveMinutes, cached?.activeMinutes || 0),
+      distanceKm: Math.max(recordDistanceKm, cached?.distanceKm || 0),
+    };
+  }, [userEmail]);
 
   const resetDailySession = useCallback((dateKey: string, record: PersistedDailyRecord | null = null) => {
     pedometerRef.current.reset();
@@ -314,7 +387,47 @@ export default function useDeviceCarbonTracker(
       resetDailySession(currentDayKey, null);
       return;
     }
-  }, [initialRecord, resetDailySession]);
+
+    // If the hook booted before today's backend record arrived, hydrate the
+    // same-day baseline exactly once while the local session is still empty.
+    const sessionIsStillEmpty =
+      stepsRef.current === 0 &&
+      activeMinutesRef.current === 0 &&
+      gpsDistanceRef.current === 0 &&
+      estimatedDistanceRef.current === 0 &&
+      lastReportedStepsRef.current === 0 &&
+      lastReportedDistanceKmRef.current === 0;
+
+    if (recordDate && recordDate === baselineDateRef.current && sessionIsStillEmpty) {
+      const nextBaseline = buildBaseline(recordDate, initialRecord);
+      setPersistedBaseline((prev) => {
+        if (
+          prev.date === nextBaseline.date &&
+          prev.steps === nextBaseline.steps &&
+          prev.activeMinutes === nextBaseline.activeMinutes &&
+          prev.distanceKm === nextBaseline.distanceKm
+        ) {
+          return prev;
+        }
+
+        return nextBaseline;
+      });
+    }
+  }, [buildBaseline, initialRecord, resetDailySession]);
+
+  useEffect(() => {
+    if (!userEmail) {
+      return;
+    }
+
+    const dateKey = baselineDateRef.current || persistedBaseline.date || getCurrentDayKey();
+    writeCachedDailyTotals(userEmail, {
+      date: dateKey,
+      steps: totalSteps,
+      activeMinutes: totalActiveMinutes,
+      distanceKm: distance,
+    });
+  }, [distance, persistedBaseline.date, totalActiveMinutes, totalSteps, userEmail]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -407,6 +520,21 @@ export default function useDeviceCarbonTracker(
   useEffect(() => {
     motionPermissionRef.current = motionPermission;
   }, [motionPermission]);
+
+  useEffect(() => {
+    if (!supported.motion || typeof window === 'undefined') {
+      setMotionPermission(supported.motion ? 'prompt' : 'unsupported');
+      return;
+    }
+
+    const deviceMotionCtor = window.DeviceMotionEvent as unknown as {
+      requestPermission?: () => Promise<'granted' | 'denied'>;
+    };
+
+    if (typeof deviceMotionCtor.requestPermission !== 'function') {
+      setMotionPermission('granted');
+    }
+  }, [supported.motion]);
 
   useEffect(() => {
     permissionDeniedRef.current = permissionDenied;

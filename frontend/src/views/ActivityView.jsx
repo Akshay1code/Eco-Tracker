@@ -330,6 +330,31 @@ export default function ActivityView({ onLogout }) {
     <div className="activity-page">
       <TopBar activeTab="activity" onLogout={onLogout} />
 
+      {tracker.supported.motion && tracker.motionPermission !== 'granted' ? (
+        <section className="activity-card activity-card-padded">
+          <div className="records-card-title" style={{ marginBottom: '0.5rem' }}>
+            <MdSensors style={{ color: '#1565c0', fontSize: '1.25rem' }} />
+            Motion Sensors Improve Step Tracking
+          </div>
+          <p className="activity-section-subtitle" style={{ marginBottom: '0.75rem', color: '#4b5563' }}>
+            {tracker.motionPermission === 'denied'
+              ? 'Motion access is blocked right now, so the app falls back to slower GPS-based step detection.'
+              : 'Enable motion access for continuous step counting, especially on iPhone and iPad browsers.'}
+          </p>
+          <button
+            type="button"
+            className="gfit-connect-btn"
+            onClick={() => {
+              void tracker.requestMotionAccess();
+            }}
+            style={{ width: 'fit-content' }}
+          >
+            <MdSensors />
+            {tracker.motionPermission === 'denied' ? 'Try again' : 'Enable motion tracking'}
+          </button>
+        </section>
+      ) : null}
+
       {fitConfigured ? (
         fitConnected ? (
           <section className="gfit-sync-panel">
