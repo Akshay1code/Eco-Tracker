@@ -22,7 +22,7 @@ import { sendGoogleFitTrigger } from '../lib/trackingApi.js';
 
 const SESSION_TOKEN_KEY = 'eco_gfit_token';
 const SESSION_CONNECTED_KEY = 'eco_gfit_connected';
-const SYNC_INTERVAL_MS = 5 * 60_000; // 5 minutes
+const SYNC_INTERVAL_MS = 10_000; // 10 seconds
 
 /**
  * Persist token to sessionStorage (cleared on tab close, not localStorage).
@@ -77,6 +77,36 @@ export default function useGoogleFit(userEmail) {
   const tokenRef = useRef(loadToken());
   const syncIntervalRef = useRef(null);
   const isMountedRef = useRef(true);
+  const prevSnapshotRef = useRef(null);
+
+  // When Google Fit snapshot changes (e.g. steps changed), store in db via trigger
+  useEffect(() => {
+    if (!fitSnapshot || !userEmail) return;
+
+    const prev = prevSnapshotRef.current;
+    if (
+      prev &&
+      prev.steps === fitSnapshot.steps &&
+      prev.distanceMeters === fitSnapshot.distanceMeters &&
+      prev.calories === fitSnapshot.calories &&
+      prev.activeMinutes === fitSnapshot.activeMinutes
+    ) {
+      // No meaningful change, skip database trigger
+      return;
+    }
+
+    prevSnapshotRef.current = fitSnapshot;
+
+    sendGoogleFitTrigger({
+      userId: userEmail,
+      steps: fitSnapshot.steps,
+      distanceMeters: fitSnapshot.distanceMeters,
+      calories: fitSnapshot.calories,
+      activeMinutes: fitSnapshot.activeMinutes,
+      activityType: fitSnapshot.activityType,
+      timestamp: fitSnapshot.syncedAt,
+    }).catch((err) => console.error('Failed to sync to DB:', err));
+  }, [fitSnapshot, userEmail]);
 
   // ─── Core sync function ────────────────────────────────────────────────────
   const performSync = useCallback(
@@ -92,17 +122,6 @@ export default function useGoogleFit(userEmail) {
         if (!isMountedRef.current) return;
 
         setFitSnapshot(snapshot);
-
-        // Send to backend eco-engine for authoritative carbon/XP calculation
-        await sendGoogleFitTrigger({
-          userId: userEmail,
-          steps: snapshot.steps,
-          distanceMeters: snapshot.distanceMeters,
-          calories: snapshot.calories,
-          activeMinutes: snapshot.activeMinutes,
-          activityType: snapshot.activityType,
-          timestamp: snapshot.syncedAt,
-        });
       } catch (error) {
         if (!isMountedRef.current) return;
 
