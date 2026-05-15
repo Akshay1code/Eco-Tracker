@@ -72,13 +72,17 @@ function getNumericValue(value) {
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
-function resolvePreferredMetric(fitValue, fallbackValue) {
+function resolveLiveMetric(fitValue, trackerValue) {
   const normalizedFitValue = getNumericValue(fitValue);
-  if (normalizedFitValue > 0) {
-    return normalizedFitValue;
+  const normalizedTrackerValue = getNumericValue(trackerValue);
+
+  if (normalizedFitValue <= 0) {
+    return normalizedTrackerValue;
   }
 
-  return getNumericValue(fallbackValue);
+  // Google Fit syncs on an interval, so let live tracker totals surface
+  // immediately instead of waiting for the next sync or a page reload.
+  return Math.max(normalizedFitValue, normalizedTrackerValue);
 }
 
 function formatFitTimestamp(value) {
@@ -92,6 +96,11 @@ function formatFitTimestamp(value) {
   }
 
   return `Last synced ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+}
+
+function formatConfidenceLabel(value) {
+  const normalizedValue = getNumericValue(value);
+  return `${Math.round(normalizedValue * 100)}%`;
 }
 
 export default function ActivityView({ onLogout }) {
@@ -120,10 +129,10 @@ export default function ActivityView({ onLogout }) {
     getNumericValue(fitSnapshot.activeMinutes) > 0 ||
     getNumericValue(fitSnapshot.calories) > 0
   );
-  const liveSteps = fitLive ? resolvePreferredMetric(fitSnapshot.steps, tracker.steps) : tracker.steps;
-  const liveDistance = fitLive ? resolvePreferredMetric(fitSnapshot.distanceKm, tracker.distance) : tracker.distance;
-  const liveActiveMin = fitLive ? resolvePreferredMetric(fitSnapshot.activeMinutes, tracker.activeMinutes) : tracker.activeMinutes;
-  const liveCalories = fitLive ? resolvePreferredMetric(fitSnapshot.calories, tracker.caloriesBurned) : tracker.caloriesBurned;
+  const liveSteps = fitLive ? resolveLiveMetric(fitSnapshot.steps, tracker.steps) : tracker.steps;
+  const liveDistance = fitLive ? resolveLiveMetric(fitSnapshot.distanceKm, tracker.distance) : tracker.distance;
+  const liveActiveMin = fitLive ? resolveLiveMetric(fitSnapshot.activeMinutes, tracker.activeMinutes) : tracker.activeMinutes;
+  const liveCalories = fitLive ? resolveLiveMetric(fitSnapshot.calories, tracker.caloriesBurned) : tracker.caloriesBurned;
   const liveNetCarbonImpact = todayRecord
     ? getNumericValue(todayRecord.net_carbon_impact ?? todayRecord.carbon_emission)
     : tracker.carbon;
@@ -131,6 +140,13 @@ export default function ActivityView({ onLogout }) {
   const liveTransportCarbon = getNumericValue(todayRecord?.transport_carbon_emission);
   const liveDeviceCarbon = getNumericValue(todayRecord?.device_carbon_emission);
   const liveChargingCarbon = getNumericValue(todayRecord?.charging_carbon_emission);
+  const liveMovementLabel = tracker.movementLabel;
+  const liveDetectionNote =
+    tracker.movementMode === 'idle'
+      ? 'Waiting for enough movement to classify your travel mode.'
+      : tracker.movementMode === 'walking' || tracker.movementMode === 'running'
+        ? 'Detected from phone motion sensors and live cadence.'
+        : 'Estimated from GPS speed and step rhythm, so vehicle labels are best-effort.';
 
   const LIVE_STATS_MAP = useMemo(
     () => [
@@ -354,6 +370,45 @@ export default function ActivityView({ onLogout }) {
           </button>
         </section>
       ) : null}
+
+      <section className="activity-card activity-card-padded">
+        <div className="records-card-title" style={{ marginBottom: '0.5rem' }}>
+          <MdTrackChanges style={{ color: '#2e7d32', fontSize: '1.25rem' }} />
+          Phone Pedometer
+        </div>
+        <p className="activity-section-subtitle" style={{ color: '#4b5563', marginBottom: '1rem' }}>
+          {liveDetectionNote}
+        </p>
+        <div className="gfit-metrics-grid">
+          <div className="gfit-metric-card">
+            <div className="gfit-metric-icon"><MdTrackChanges /></div>
+            <div className="gfit-metric-value" style={{ fontSize: '1rem', lineHeight: 1.2 }}>
+              {liveMovementLabel}
+            </div>
+            <div className="gfit-metric-label">Detected mode</div>
+          </div>
+          <div className="gfit-metric-card">
+            <div className="gfit-metric-icon"><MdDirectionsWalk /></div>
+            <div className="gfit-metric-value">{tracker.steps.toLocaleString()}</div>
+            <div className="gfit-metric-label">Live steps</div>
+          </div>
+          <div className="gfit-metric-card">
+            <div className="gfit-metric-icon"><MdTimer /></div>
+            <div className="gfit-metric-value">{tracker.cadence.toFixed(0)}</div>
+            <div className="gfit-metric-label">Cadence (spm)</div>
+          </div>
+          <div className="gfit-metric-card">
+            <div className="gfit-metric-icon"><MdStraighten /></div>
+            <div className="gfit-metric-value">{tracker.speed.toFixed(1)}</div>
+            <div className="gfit-metric-label">Speed (km/h)</div>
+          </div>
+          <div className="gfit-metric-card">
+            <div className="gfit-metric-icon"><MdCheckCircle /></div>
+            <div className="gfit-metric-value">{formatConfidenceLabel(tracker.averageStepConfidence)}</div>
+            <div className="gfit-metric-label">Step confidence</div>
+          </div>
+        </div>
+      </section>
 
       {fitConfigured ? (
         fitConnected ? (

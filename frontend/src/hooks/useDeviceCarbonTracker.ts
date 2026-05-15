@@ -9,6 +9,7 @@ import {
 
 type MotionPermission = 'prompt' | 'granted' | 'denied' | 'unsupported';
 type ActivityKind = PedometerActivity | 'vehicle';
+type MovementMode = 'idle' | 'walking' | 'running' | 'cycling' | 'two_wheeler' | 'car_or_bus' | 'train_or_metro';
 type TrackingStatus = 'active' | 'paused' | 'permission-denied' | 'unsupported';
 
 interface BatteryManagerLike extends EventTarget {
@@ -49,6 +50,8 @@ export interface DeviceCarbonData {
   permissionDenied: boolean;
   motionPermission: MotionPermission;
   activity: ActivityKind;
+  movementMode: MovementMode;
+  movementLabel: string;
   trackingStatus: TrackingStatus;
   meaningfulUpdates: number;
   lastMovementDistance: number;
@@ -215,6 +218,68 @@ function deriveActivityFromSignals(
   return 'idle';
 }
 
+function deriveMovementMode(activity: ActivityKind, speedKmh: number, cadenceSpm: number): MovementMode {
+  const normalizedSpeedKmh = Math.max(0, Number(speedKmh || 0));
+  const normalizedCadenceSpm = Math.max(0, Number(cadenceSpm || 0));
+
+  if (activity === 'running' || normalizedCadenceSpm >= 145) {
+    return 'running';
+  }
+
+  if (activity === 'vehicle') {
+    if (normalizedSpeedKmh < 22) {
+      return 'two_wheeler';
+    }
+
+    if (normalizedSpeedKmh < 55) {
+      return 'car_or_bus';
+    }
+
+    return 'train_or_metro';
+  }
+
+  if (activity === 'walking') {
+    if (normalizedSpeedKmh >= 9 && normalizedCadenceSpm < 135) {
+      return 'cycling';
+    }
+
+    return 'walking';
+  }
+
+  if (normalizedSpeedKmh >= 9 && normalizedSpeedKmh < 20 && normalizedCadenceSpm < 120) {
+    return 'cycling';
+  }
+
+  if (normalizedSpeedKmh >= 20 && normalizedSpeedKmh < 55) {
+    return 'car_or_bus';
+  }
+
+  if (normalizedSpeedKmh >= 55) {
+    return 'train_or_metro';
+  }
+
+  return 'idle';
+}
+
+function formatMovementLabel(mode: MovementMode) {
+  switch (mode) {
+    case 'walking':
+      return 'Walking';
+    case 'running':
+      return 'Running';
+    case 'cycling':
+      return 'Cycling';
+    case 'two_wheeler':
+      return 'Likely Bike / Scooter';
+    case 'car_or_bus':
+      return 'Likely Car / Bus';
+    case 'train_or_metro':
+      return 'Likely Train / Metro';
+    default:
+      return 'Idle';
+  }
+}
+
 export default function useDeviceCarbonTracker(
   userEmail: string | null,
   initialRecord: PersistedDailyRecord | null = null
@@ -304,6 +369,14 @@ export default function useDeviceCarbonTracker(
   const distance = useMemo(
     () => round(persistedBaseline.distanceKm + sessionDistance, 3),
     [persistedBaseline.distanceKm, sessionDistance]
+  );
+  const movementMode = useMemo(
+    () => deriveMovementMode(activity, speed, cadence),
+    [activity, cadence, speed]
+  );
+  const movementLabel = useMemo(
+    () => formatMovementLabel(movementMode),
+    [movementMode]
   );
 
   const buildBaseline = useCallback((dateKey: string, record: PersistedDailyRecord | null = null) => {
@@ -979,6 +1052,8 @@ export default function useDeviceCarbonTracker(
     permissionDenied,
     motionPermission,
     activity,
+    movementMode,
+    movementLabel,
     trackingStatus,
     meaningfulUpdates,
     lastMovementDistance,
