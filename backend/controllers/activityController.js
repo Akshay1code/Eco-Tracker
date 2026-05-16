@@ -1,5 +1,5 @@
 import { getDailyRecord, listDailyRecords, mutateDailyRecord } from '../models/activityModel.js';
-import { findUserByUserId, syncUserProgress, toPublicUser } from '../models/userModel.js';
+import { findUserByUserId, syncUserProgress, syncUserActivityStreak, toPublicUser } from '../models/userModel.js';
 import {
   applyActivityTrigger,
   applyBatteryTrigger,
@@ -55,12 +55,46 @@ async function syncProgressForRecord(userId, previousRecord, currentRecord) {
   const currentXp = Math.max(0, Number(currentRecord?.xp_earned || 0));
   const xpDelta = currentXp - previousXp;
 
-  if (xpDelta === 0) {
-    return toPublicUser(existingUser);
+  let updatedUser = existingUser;
+
+  if (xpDelta > 0) {
+    const nextTotalXp = Math.max(0, Number(existingUser.score || 0) + xpDelta);
+    updatedUser = await syncUserProgress(userId, nextTotalXp);
   }
 
-  const nextTotalXp = Math.max(0, Number(existingUser.score || 0) + xpDelta);
-  const updatedUser = await syncUserProgress(userId, nextTotalXp);
+  // Recalculate streak and store it
+  const records = await listDailyRecords(userId);
+  const activityDates = new Set(
+    records
+      .filter((record) =>
+        Number(record.steps || 0) > 0 ||
+        Number(record.active_time || 0) > 0 ||
+        Number(record.activity_distance || 0) > 0 ||
+        Number(record.carbon_emission || 0) > 0
+      )
+      .map((record) => record.date)
+  );
+
+  const getPrevDay = (dateStr) => {
+    const d = new Date(dateStr);
+    d.setUTCDate(d.getUTCDate() - 1);
+    return d.toISOString().slice(0, 10);
+  };
+
+  let streak = 0;
+  let cursorStr = new Date().toISOString().slice(0, 10);
+  
+  if (!activityDates.has(cursorStr)) {
+    cursorStr = getPrevDay(cursorStr);
+  }
+
+  while (activityDates.has(cursorStr)) {
+    streak += 1;
+    cursorStr = getPrevDay(cursorStr);
+  }
+
+  updatedUser = await syncUserActivityStreak(userId, streak);
+
   return toPublicUser(updatedUser);
 }
 

@@ -66,3 +66,40 @@ export async function fetchBackendHealth() {
   const response = await fetch(`${API_BASE_URL}/api/health`);
   return parseApiResponse(response, 'Unable to reach the backend right now.');
 }
+
+
+export async function fetchDailyQuests(userId) {
+  const normalizedUserId = typeof userId === 'string' ? userId.trim().toLowerCase() : '';
+  const response = await fetch(`${API_BASE_URL}/api/users/quests?userId=${encodeURIComponent(normalizedUserId)}`);
+  return parseApiResponse(response, 'Unable to fetch daily quests.');
+}
+
+export async function completeDailyQuest(userId, questId) {
+  const normalizedUserId = typeof userId === 'string' ? userId.trim().toLowerCase() : '';
+  const response = await fetch(`${API_BASE_URL}/api/users/quests/complete?userId=${encodeURIComponent(normalizedUserId)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ questId }),
+  });
+  return parseApiResponse(response, 'Unable to complete quest.');
+}
+
+export async function submitTransportCarbon(userId, deltaKgCO2, type = 'car') {
+  const normalizedUserId = typeof userId === 'string' ? userId.trim().toLowerCase() : '';
+  const response = await fetch(`${API_BASE_URL}/api/users/carbon/transport?userId=${encodeURIComponent(normalizedUserId)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ deltaKgCO2, type }),
+  });
+  return parseApiResponse(response, 'Unable to submit transport carbon.');
+}
+
+export async function submitElectricityBill(userId, billAmount, unitsKwh) {
+  const normalizedUserId = typeof userId === 'string' ? userId.trim().toLowerCase() : '';
+  const response = await fetch(`${API_BASE_URL}/api/users/carbon/electricity?userId=${encodeURIComponent(normalizedUserId)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ billAmount, unitsKwh }),
+  });
+  return parseApiResponse(response, 'Unable to submit electricity bill.');
+}

@@ -14,6 +14,7 @@ import {
 } from '../models/userModel.js';
 import { listActivityRecordsForLeaderboard } from '../models/activityModel.js';
 import { WELCOME_XP } from '../constants.js';
+import { getDailyQuests, completeQuest, updateCarbonFootprint } from '../services/questService.js';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const LEADERBOARD_LIMIT = 50;
@@ -151,12 +152,22 @@ function calculateStreak(records) {
       .map((record) => record.date)
   );
 
-  let streak = 0;
-  const cursor = new Date();
+  const getPrevDay = (dateStr) => {
+    const d = new Date(dateStr);
+    d.setUTCDate(d.getUTCDate() - 1);
+    return d.toISOString().slice(0, 10);
+  };
 
-  while (activityDates.has(cursor.toISOString().slice(0, 10))) {
+  let streak = 0;
+  let cursorStr = new Date().toISOString().slice(0, 10);
+  
+  if (!activityDates.has(cursorStr)) {
+    cursorStr = getPrevDay(cursorStr);
+  }
+
+  while (activityDates.has(cursorStr)) {
     streak += 1;
-    cursor.setDate(cursor.getDate() - 1);
+    cursorStr = getPrevDay(cursorStr);
   }
 
   return streak;
@@ -192,6 +203,8 @@ function summarizeLeaderboardUser(user, records, recentDates) {
 
 export async function getUserProfile(searchParams) {
   const userId = normalizeUserId(getParam(searchParams, 'userId') || getParam(searchParams, 'email'));
+  const viewerId = normalizeUserId(getParam(searchParams, 'viewerId'));
+
   if (!userId) {
     return {
       status: 400,
@@ -208,6 +221,11 @@ export async function getUserProfile(searchParams) {
   }
 
   const publicUser = toPublicUser(user);
+  
+  // Filter private journal entries if viewer is not the owner
+  if (viewerId && viewerId !== userId && publicUser.journal) {
+    publicUser.journal = publicUser.journal.filter(entry => entry.visibility === 'public');
+  }
   return {
     status: 200,
     payload: {
@@ -401,4 +419,73 @@ export async function loginUser(payload = {}) {
       profile: createProfile(publicUser),
     },
   };
+}
+
+export async function fetchDailyQuests(searchParams) {
+  const userId = normalizeUserId(getParam(searchParams, 'userId'));
+  if (!userId) return { status: 400, payload: { error: 'userId is required.' } };
+
+  try {
+    const data = await getDailyQuests(userId);
+    return { status: 200, payload: { success: true, data } };
+  } catch (error) {
+    return { status: 400, payload: { error: error.message } };
+  }
+}
+
+export async function submitQuestCompletion(searchParams, payload) {
+  const userId = normalizeUserId(getParam(searchParams, 'userId'));
+  if (!userId) return { status: 400, payload: { error: 'userId is required.' } };
+
+  const { questId } = payload;
+  if (!questId) return { status: 400, payload: { error: 'questId is required.' } };
+
+  try {
+    const data = await completeQuest(userId, questId);
+    return { status: 200, payload: { success: true, data } };
+  } catch (error) {
+    return { status: 400, payload: { error: error.message } };
+  }
+}
+
+export async function submitTransportCarbon(searchParams, payload) {
+  const userId = normalizeUserId(getParam(searchParams, 'userId'));
+  if (!userId) return { status: 400, payload: { error: 'userId is required.' } };
+
+  const { deltaKgCO2 } = payload;
+  if (typeof deltaKgCO2 !== 'number') return { status: 400, payload: { error: 'deltaKgCO2 is required.' } };
+
+  try {
+    const data = await updateCarbonFootprint(userId, deltaKgCO2);
+    return { status: 200, payload: { success: true, data } };
+  } catch (error) {
+    return { status: 400, payload: { error: error.message } };
+  }
+}
+
+export async function submitElectricityBill(searchParams, payload) {
+  const userId = normalizeUserId(getParam(searchParams, 'userId'));
+  if (!userId) return { status: 400, payload: { error: 'userId is required.' } };
+
+  const { billAmount, unitsKwh } = payload;
+  
+  let kwh = unitsKwh;
+  if (!kwh || kwh <= 0) {
+    if (!billAmount || billAmount <= 0) {
+      return { status: 400, payload: { error: 'Provide either billAmount or unitsKwh.' } };
+    }
+    kwh = billAmount / 8.50; // Fallback MSEDCL 2024 rate
+  }
+
+  // Monthly kgCO2 = units_kWh * 0.725
+  const monthlyKgCO2 = kwh * 0.725;
+  const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+  const dailyKgCO2Contribution = monthlyKgCO2 / daysInMonth;
+
+  try {
+    const data = await updateCarbonFootprint(userId, dailyKgCO2Contribution);
+    return { status: 200, payload: { success: true, data: { ...data, dailyKgCO2Contribution } } };
+  } catch (error) {
+    return { status: 400, payload: { error: error.message } };
+  }
 }

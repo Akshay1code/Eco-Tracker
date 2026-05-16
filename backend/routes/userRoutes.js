@@ -7,6 +7,10 @@ import {
   signupUser,
   updateGoals,
   updateJournal,
+  fetchDailyQuests,
+  submitQuestCompletion,
+  submitTransportCarbon,
+  submitElectricityBill
 } from '../controllers/userController.js';
 
 function asyncRoute(handler) {
@@ -74,6 +78,38 @@ export function createUserRouter() {
     '/login',
     asyncRoute(async (request, response) => {
       const result = await loginUser(request.body);
+      response.status(result.status).json(result.payload);
+    })
+  );
+
+  router.get(
+    '/quests',
+    asyncRoute(async (request, response) => {
+      const result = await fetchDailyQuests(request.query);
+      response.status(result.status).json(result.payload);
+    })
+  );
+
+  router.post(
+    '/quests/complete',
+    asyncRoute(async (request, response) => {
+      const result = await submitQuestCompletion(request.query, request.body);
+      response.status(result.status).json(result.payload);
+    })
+  );
+
+  router.post(
+    '/carbon/transport',
+    asyncRoute(async (request, response) => {
+      const result = await submitTransportCarbon(request.query, request.body);
+      response.status(result.status).json(result.payload);
+    })
+  );
+
+  router.post(
+    '/carbon/electricity',
+    asyncRoute(async (request, response) => {
+      const result = await submitElectricityBill(request.query, request.body);
       response.status(result.status).json(result.payload);
     })
   );

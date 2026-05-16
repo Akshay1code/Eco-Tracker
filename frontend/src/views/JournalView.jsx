@@ -3,7 +3,7 @@ import {
   MdAutoAwesome, MdBookmark, MdCloudQueue, MdDelete, MdEdit,
   MdFilterList, MdInsights, MdMenuBook, MdMood, MdPark,
   MdPublic, MdSearch, MdSpa, MdToday, MdWbSunny, MdEco,
-  MdElectricBolt, MdDirectionsCar, MdRestaurant, MdRecycling,
+  MdElectricBolt, MdDirectionsCar, MdRestaurant, MdRecycling, MdLock
 } from 'react-icons/md';
 import TopBar from '../components/layout/TopBar.jsx';
 import useUserProfile from '../hooks/useUserProfile.js';
@@ -41,10 +41,12 @@ const CAT_LOOKUP    = Object.fromEntries(CATEGORIES.map(c => [c.value, c]));
 
 /* ── Helpers ──────────────────────────────────────────────────── */
 const createForm = () => ({
-  date:     new Date().toISOString().slice(0, 10),
-  mood:     MOOD_OPTIONS[0].value,
-  category: CATEGORIES[0].value,
-  text:     '',
+  date:       new Date().toISOString().slice(0, 10),
+  mood:       MOOD_OPTIONS[0].value,
+  category:   CATEGORIES[0].value,
+  text:       '',
+  tags:       '',
+  visibility: 'private',
 });
 
 const getLiveCarbonKg = () => {
@@ -73,6 +75,13 @@ const getStreak = journal => {
     .map(d => new Date(`${d}T00:00:00`)).filter(d => !isNaN(d))
     .sort((a,b) => b - a);
   if (!days.length) return 0;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diffFromToday = Math.round((today - days[0]) / 86400000);
+  
+  if (diffFromToday > 1) return 0;
+
   let streak = 1;
   for (let i = 1; i < days.length; i++) {
     if (Math.round((days[i-1] - days[i]) / 86400000) !== 1) break;
@@ -159,11 +168,13 @@ export default function JournalView({ onLogout, activeTab = 'journal' }) {
     setSaveState({ type: '', message: '' });
     const footprint = getLiveCarbonKg();
     const newEntry = {
-      id:       allEntries.length ? Math.max(...allEntries.map(e => Number(e.id)||0)) + 1 : 1,
-      date:     form.date,
-      mood:     form.mood,
-      category: form.category,
-      text:     form.text.trim(),
+      id:         allEntries.length ? Math.max(...allEntries.map(e => Number(e.id)||0)) + 1 : 1,
+      date:       form.date,
+      mood:       form.mood,
+      category:   form.category,
+      text:       form.text.trim(),
+      tags:       form.tags.split(',').map(t => t.trim()).filter(Boolean),
+      visibility: form.visibility,
       footprint,
     };
     try {
@@ -320,11 +331,26 @@ export default function JournalView({ onLogout, activeTab = 'journal' }) {
           <div className="input-group">
             <label className="input-label">Daily Wisdom & Actions</label>
             <textarea className="premium-textarea premium-textarea-tall" rows={5}
-              placeholder="What changed today, and what would you like to repeat tomorrow?"
+              placeholder="What changed today, and what would you like to repeat tomorrow? (Markdown supported)"
               value={form.text} onChange={e => setForm({ ...form, text: e.target.value })} />
             <div className="field-meta-row">
               <span>Write a short note about your choices and lessons.</span>
               <span>{form.text.trim().split(/\s+/).filter(Boolean).length} words</span>
+            </div>
+          </div>
+
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:'1rem' }}>
+            <div className="input-group">
+              <label className="input-label">Tags (comma separated)</label>
+              <input type="text" className="premium-input" placeholder="e.g. diet, zero-waste" value={form.tags}
+                onChange={e => setForm({ ...form, tags: e.target.value })} />
+            </div>
+            <div className="input-group">
+              <label className="input-label">Visibility</label>
+              <select className="premium-input" value={form.visibility} onChange={e => setForm({ ...form, visibility: e.target.value })}>
+                <option value="private">Private (Only Me)</option>
+                <option value="public">Public (Show on Profile)</option>
+              </select>
             </div>
           </div>
 
@@ -440,6 +466,11 @@ export default function JournalView({ onLogout, activeTab = 'journal' }) {
                     {fmtDate(entry.date)}
                   </span>
                   <div className="journal-header-pills">
+                    {entry.visibility === 'public' ? (
+                      <span className="journal-mood-badge" style={{ color: '#1976d2' }} title="Public Entry"><MdPublic /> Public</span>
+                    ) : (
+                      <span className="journal-mood-badge" style={{ color: '#888' }} title="Private Entry"><MdLock /> Private</span>
+                    )}
                     <span className="journal-mood-badge" style={{ color: mood.color }}>
                       <MoodIcon /> {mood.label}
                     </span>
@@ -455,7 +486,14 @@ export default function JournalView({ onLogout, activeTab = 'journal' }) {
                     </span>
                   </div>
                 </div>
-                <p className="journal-text">{entry.text}</p>
+                <p className="journal-text" style={{ whiteSpace: 'pre-wrap' }}>{entry.text}</p>
+                {entry.tags && entry.tags.length > 0 && (
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '10px' }}>
+                    {entry.tags.map(tag => (
+                      <span key={tag} style={{ background: '#f1f5f9', color: '#475569', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem' }}>#{tag}</span>
+                    ))}
+                  </div>
+                )}
                 <div className="journal-footer">
                   <div className="impact-chip">
                     <MdCloudQueue /> {Number(entry.footprint||0).toFixed(3)} kg CO₂

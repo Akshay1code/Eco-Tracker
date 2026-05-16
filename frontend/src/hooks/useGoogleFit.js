@@ -179,28 +179,32 @@ export default function useGoogleFit(userEmail) {
       startSyncInterval(stored);
     }
 
-    // Smart Refresh Logic: Trigger sync when window regains focus or tab becomes visible
-    // This helps recover from browser background throttling.
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && tokenRef.current) {
-        performSync(tokenRef.current);
+    // Smart Refresh Logic: Aggressively trigger sync on user interaction
+    // to recover from browser background throttling.
+    const triggerSync = () => {
+      if (tokenRef.current) performSync(tokenRef.current);
+    };
+
+    const triggerDelayedSync = async () => {
+      if (document.visibilityState === 'visible') {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        if (tokenRef.current) performSync(tokenRef.current);
       }
     };
 
-    const handleFocus = () => {
-      if (tokenRef.current) {
-        performSync(tokenRef.current);
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
+    const events = ['focus', 'click', 'touchstart', 'visibilitychange'];
+    events.forEach((evt) => {
+      window.addEventListener(evt, triggerSync);
+    });
+    document.addEventListener('visibilitychange', triggerDelayedSync);
 
     return () => {
       isMountedRef.current = false;
       stopSyncInterval();
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
+      events.forEach((evt) => {
+        window.removeEventListener(evt, triggerSync);
+      });
+      document.removeEventListener('visibilitychange', triggerDelayedSync);
     };
     // Only run on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps

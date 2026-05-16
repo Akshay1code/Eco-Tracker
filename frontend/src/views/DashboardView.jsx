@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import EcoDashboardHeader from '../components/layout/EcoDashboardHeader.jsx';
 import HeroCard from '../components/dashboard/HeroCard.jsx';
 import EcoCalendar from '../components/dashboard/EcoCalendar.jsx';
@@ -10,8 +10,16 @@ import useDailyActivityRecords from '../hooks/useDailyActivityRecords.js';
 import useLeaderboard from '../hooks/useLeaderboard.js';
 import useUserProfile from '../hooks/useUserProfile.js';
 import useDeviceCarbonTracker from '../hooks/useDeviceCarbonTracker.ts';
+import DailyQuestsCard from '../components/dashboard/DailyQuestsCard.jsx';
+import VehicleDetectionModal from '../components/modals/VehicleDetectionModal.jsx';
+import CyclingCelebrationCard from '../components/dashboard/CyclingCelebrationCard.jsx';
+import ElectricityBillModal from '../components/modals/ElectricityBillModal.jsx';
 
 function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboard' }) {
+  const [vehicleModalShown, setVehicleModalShown] = useState(false);
+  const [pendingVehicleData, setPendingVehicleData] = useState(null);
+  const [showElectricityModal, setShowElectricityModal] = useState(false);
+
   const { users: leaderboardUsers, isLoading: isLeaderboardLoading, error: leaderboardError } = useLeaderboard(5);
   const topFive = leaderboardUsers.slice(0, 5);
   const storedEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
@@ -46,6 +54,40 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
   // tracker.carbon is already set to backendCarbonKg when available (see useDeviceCarbonTracker).
   // todayRecord from the daily poll gives the same source-of-truth but may be slightly stale.
   const liveCarbon = tracker.carbon;
+
+  useEffect(() => {
+    // Detect vehicle movement and trigger modal once per session
+    if (!vehicleModalShown && (tracker.movementMode === 'car_or_bus' || tracker.movementMode === 'train_or_metro' || tracker.movementMode === 'two_wheeler')) {
+      if (tracker.speed > 5) { // Ensure speed is actually significant
+        setPendingVehicleData({
+          mode: tracker.movementMode,
+          speed: tracker.speed
+        });
+      }
+    }
+  }, [tracker.movementMode, tracker.speed, vehicleModalShown]);
+
+  useEffect(() => {
+    // Electricity bill logic: 7th to 12th of the month
+    const today = new Date();
+    const day = today.getDate();
+    if (day >= 7 && day <= 12 && storedEmail && userProfile) {
+      // Check if user already submitted this month's bill
+      const lastBillDateStr = userProfile.lastElectricityBillDate;
+      if (lastBillDateStr) {
+        const lastBillDate = new Date(lastBillDateStr);
+        if (lastBillDate.getMonth() === today.getMonth() && lastBillDate.getFullYear() === today.getFullYear()) {
+          return; // Already submitted this month
+        }
+      }
+      
+      // Also check local storage to avoid spamming if they close it
+      const dismissedKey = `eco_elec_dismissed_${today.getFullYear()}_${today.getMonth()}`;
+      if (!localStorage.getItem(dismissedKey)) {
+        setShowElectricityModal(true);
+      }
+    }
+  }, [storedEmail, userProfile]);
 
   const dashboardData = {
     ...tracker,
@@ -84,11 +126,22 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
       )
       .map((record) => record.date)
   );
+  const getPrevDay = (dateStr) => {
+    const d = new Date(dateStr);
+    d.setUTCDate(d.getUTCDate() - 1);
+    return d.toISOString().slice(0, 10);
+  };
+
   let streakDays = 0;
-  const streakCursor = new Date();
-  while (activityDates.has(streakCursor.toISOString().slice(0, 10))) {
+  let cursorStr = new Date().toISOString().slice(0, 10);
+  
+  if (!activityDates.has(cursorStr)) {
+    cursorStr = getPrevDay(cursorStr);
+  }
+
+  while (activityDates.has(cursorStr)) {
     streakDays += 1;
-    streakCursor.setDate(streakCursor.getDate() - 1);
+    cursorStr = getPrevDay(cursorStr);
   }
 
   return (
@@ -123,6 +176,30 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
 
       <HeroCard deviceData={dashboardData} compact />
 
+      {tracker.movementMode === 'cycling' && (
+        <CyclingCelebrationCard 
+          distanceKm={tracker.estimatedDistance || 0.1} 
+          co2SavedKg={(tracker.estimatedDistance || 0.1) * 0.192} 
+        />
+      )}
+
+      {storedEmail && (
+        <DailyQuestsCard 
+          userId={storedEmail} 
+          onQuestCompleted={(data) => {
+            // Optimistically update footprint locally 
+            const todayKey = new Date().toISOString().slice(0, 10);
+            try {
+              const existing = JSON.parse(localStorage.getItem(`eco_daily_${todayKey}`) || '{}');
+              localStorage.setItem(
+                `eco_daily_${todayKey}`,
+                JSON.stringify({ ...existing, carbon: data.new_carbon_footprint })
+              );
+            } catch {}
+          }}
+        />
+      )}
+
       <div className="two-col" style={{ marginTop: 20 }}>
         <EcoCalendar onDayClick={onCalClick} activeDays={activeCalendarDays} recordsByDay={calendarRecordsByDay} />
 
@@ -153,6 +230,55 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
       {tracker.batteryAlert ? (
         <TrackerAlertModal alert={tracker.batteryAlert} onClose={tracker.dismissBatteryAlert} />
       ) : null}
+
+      {pendingVehicleData && !vehicleModalShown && (
+        <VehicleDetectionModal 
+          mode={pendingVehicleData.mode} 
+          speedKmh={pendingVehicleData.speed * 3.6} // m/s to km/h
+          onClose={() => {
+            setPendingVehicleData(null);
+            setVehicleModalShown(true);
+          }}
+          onConfirm={(result) => {
+            setPendingVehicleData(null);
+            setVehicleModalShown(true);
+            
+            if (result.carbonKg > 0) {
+              const todayKey = new Date().toISOString().slice(0, 10);
+              try {
+                const existing = JSON.parse(localStorage.getItem(`eco_daily_${todayKey}`) || '{}');
+                // Optimistically add the carbon
+                localStorage.setItem(
+                  `eco_daily_${todayKey}`,
+                  JSON.stringify({ ...existing, carbon: (existing.carbon || 0) + result.carbonKg })
+                );
+              } catch {}
+            }
+          }}
+        />
+      )}
+
+      {showElectricityModal && storedEmail && (
+        <ElectricityBillModal 
+          userId={storedEmail}
+          onClose={() => {
+            setShowElectricityModal(false);
+            const today = new Date();
+            localStorage.setItem(`eco_elec_dismissed_${today.getFullYear()}_${today.getMonth()}`, 'true');
+          }}
+          onComplete={(data) => {
+            // Optimistically update daily footprint
+            const todayKey = new Date().toISOString().slice(0, 10);
+            try {
+              const existing = JSON.parse(localStorage.getItem(`eco_daily_${todayKey}`) || '{}');
+              localStorage.setItem(
+                `eco_daily_${todayKey}`,
+                JSON.stringify({ ...existing, carbon: (existing.carbon || 0) + data.dailyKgCO2Contribution })
+              );
+            } catch {}
+          }}
+        />
+      )}
     </div>
   );
 }

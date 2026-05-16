@@ -74,6 +74,11 @@ function sanitizeUserDocument(document) {
     goals: Array.isArray(document.goals) ? document.goals : [],
     journal: Array.isArray(document.journal) ? document.journal : [],
     settings: normalizeUserSettings(document.settings),
+    carbonFootprint: typeof document.carbonFootprint === 'number' ? document.carbonFootprint : 0.0,
+    dailyQuests: document.dailyQuests || { date: '', assigned: [], completed: [] },
+    questStreak: typeof document.questStreak === 'number' ? document.questStreak : 0,
+    activityStreak: typeof document.activityStreak === 'number' ? document.activityStreak : 0,
+    lastElectricityBillDate: document.lastElectricityBillDate || '',
     createdAt: document.createdAt,
     updatedAt: document.updatedAt,
   };
@@ -188,6 +193,10 @@ export async function createUser(userData) {
     goals: Array.isArray(userData.goals) ? userData.goals : [],
     journal: Array.isArray(userData.journal) ? userData.journal : [],
     settings: normalizeUserSettings(userData.settings),
+    carbonFootprint: 0.0,
+    dailyQuests: { date: '', assigned: [], completed: [] },
+    questStreak: 0,
+    lastElectricityBillDate: '',
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -226,6 +235,9 @@ export async function listUsersForLeaderboard() {
           levelProgressPct: 1,
           badges: 1,
           settings: 1,
+          carbonFootprint: 1,
+          questStreak: 1,
+          activityStreak: 1,
           createdAt: 1,
           updatedAt: 1,
         },
@@ -272,6 +284,27 @@ export async function syncUserProgress(userId, totalXp) {
     ...progression,
     updatedAt: timestamp,
   };
+}
+
+export async function syncUserActivityStreak(userId, streak) {
+  const timestamp = new Date().toISOString();
+  const existingUser = await findUserByUserId(userId);
+  if (!existingUser) return null;
+
+  if (isFileStoreMode()) {
+    await updateStoredUserByEmailKey(normalizeLookupValue(userId), (currentUser) => ({
+      ...currentUser,
+      activityStreak: streak,
+      updatedAt: timestamp,
+    }));
+  } else {
+    await getUsersCollection().updateOne(
+      { emailKey: normalizeLookupValue(userId) },
+      { $set: { activityStreak: streak, updatedAt: timestamp } }
+    );
+  }
+
+  return { ...existingUser, activityStreak: streak, updatedAt: timestamp };
 }
 
 export async function updateUserProfileSettings(userId, profileData = {}) {
