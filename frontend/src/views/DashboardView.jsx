@@ -68,26 +68,30 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
   }, [tracker.movementMode, tracker.speed, vehicleModalShown]);
 
   useEffect(() => {
-    // Electricity bill logic: 7th to 12th of the month
-    const today = new Date();
-    const day = today.getDate();
-    if (day >= 7 && day <= 12 && storedEmail && userProfile) {
-      // Check if user already submitted this month's bill
-      const lastBillDateStr = userProfile.lastElectricityBillDate;
-      if (lastBillDateStr) {
-        const lastBillDate = new Date(lastBillDateStr);
-        if (lastBillDate.getMonth() === today.getMonth() && lastBillDate.getFullYear() === today.getFullYear()) {
-          return; // Already submitted this month
+    if (!storedEmail) return;
+
+    const checkAndShowElectricityModal = () => {
+      const now = new Date();
+      const hour = now.getHours();
+      const todayKey = now.toISOString().slice(0, 10);
+      const shownKey = `eco_elec_shown_${storedEmail}_${todayKey}`;
+
+      // Only show between 11:00 AM and 12:00 PM local time
+      if (hour >= 11 && hour < 12) {
+        if (!localStorage.getItem(shownKey)) {
+          setShowElectricityModal(true);
+          localStorage.setItem(shownKey, 'true');
         }
       }
-      
-      // Also check local storage to avoid spamming if they close it
-      const dismissedKey = `eco_elec_dismissed_${today.getFullYear()}_${today.getMonth()}`;
-      if (!localStorage.getItem(dismissedKey)) {
-        setShowElectricityModal(true);
-      }
-    }
-  }, [storedEmail, userProfile]);
+    };
+
+    // Check immediately on mount
+    checkAndShowElectricityModal();
+
+    // Then re-check every minute so it catches the 11am window if the app is already open
+    const interval = setInterval(checkAndShowElectricityModal, 60_000);
+    return () => clearInterval(interval);
+  }, [storedEmail]);
 
   const dashboardData = {
     ...tracker,
