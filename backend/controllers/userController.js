@@ -12,7 +12,7 @@ import {
   saveUserGoals,
   saveUserJournal,
 } from '../models/userModel.js';
-import { listActivityRecordsForLeaderboard } from '../models/activityModel.js';
+import { listActivityRecordsForLeaderboard, mutateDailyRecord } from '../models/activityModel.js';
 import { WELCOME_XP } from '../constants.js';
 import { getDailyQuests, completeQuest, updateCarbonFootprint } from '../services/questService.js';
 
@@ -457,6 +457,25 @@ export async function submitTransportCarbon(searchParams, payload) {
 
   try {
     const data = await updateCarbonFootprint(userId, deltaKgCO2);
+    // Sync to daily activity record
+    await mutateDailyRecord(userId, new Date().toISOString(), (dailyRecord) => {
+      dailyRecord.transport_carbon_emission = Number((dailyRecord.transport_carbon_emission + deltaKgCO2).toFixed(6));
+      
+      const deviceCarbon = Number(dailyRecord.device_carbon_emission || 0);
+      const chargingCarbon = Number(dailyRecord.charging_carbon_emission || 0);
+      const transportCarbon = Number(dailyRecord.transport_carbon_emission || 0);
+      const carbonSaved = Number(dailyRecord.carbon_saved || 0);
+
+      const gross = Number((deviceCarbon + chargingCarbon + transportCarbon).toFixed(6));
+      const net = Number(Math.max(0, gross - carbonSaved).toFixed(6));
+
+      dailyRecord.gross_carbon_impact = gross;
+      dailyRecord.net_carbon_impact = net;
+      dailyRecord.carbon_emission = net;
+      
+      return { updated: true };
+    });
+
     return { status: 200, payload: { success: true, data } };
   } catch (error) {
     return { status: 400, payload: { error: error.message } };
@@ -484,6 +503,25 @@ export async function submitElectricityBill(searchParams, payload) {
 
   try {
     const data = await updateCarbonFootprint(userId, dailyKgCO2Contribution);
+    // Sync to daily activity record
+    await mutateDailyRecord(userId, new Date().toISOString(), (dailyRecord) => {
+      dailyRecord.device_carbon_emission = Number((dailyRecord.device_carbon_emission + dailyKgCO2Contribution).toFixed(6));
+      
+      const deviceCarbon = Number(dailyRecord.device_carbon_emission || 0);
+      const chargingCarbon = Number(dailyRecord.charging_carbon_emission || 0);
+      const transportCarbon = Number(dailyRecord.transport_carbon_emission || 0);
+      const carbonSaved = Number(dailyRecord.carbon_saved || 0);
+
+      const gross = Number((deviceCarbon + chargingCarbon + transportCarbon).toFixed(6));
+      const net = Number(Math.max(0, gross - carbonSaved).toFixed(6));
+
+      dailyRecord.gross_carbon_impact = gross;
+      dailyRecord.net_carbon_impact = net;
+      dailyRecord.carbon_emission = net;
+
+      return { updated: true };
+    });
+
     return { status: 200, payload: { success: true, data: { ...data, dailyKgCO2Contribution } } };
   } catch (error) {
     return { status: 400, payload: { error: error.message } };

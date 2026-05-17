@@ -3,7 +3,7 @@ import Modal from '../shared/Modal.jsx';
 import { MdDirectionsBus, MdDirectionsCar, MdTrain, MdPedalBike, MdClose } from 'react-icons/md';
 import { submitTransportCarbon } from '../../lib/userApi.js';
 
-function VehicleDetectionModal({ mode, speedKmh, onClose, onConfirm }) {
+function VehicleDetectionModal({ userId, mode, speedKmh, onClose, onConfirm }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSelect = async (transportType) => {
@@ -14,14 +14,14 @@ function VehicleDetectionModal({ mode, speedKmh, onClose, onConfirm }) {
     const assumedDistanceKm = Math.max(1, (speedKmh / 60) * 10); // e.g. 10 mins driving at that speed
     
     switch (transportType) {
-      case 'car': carbonKg = assumedDistanceKm * 0.192; break; // avg car
+      case 'car': carbonKg = assumedDistanceKm * 0.171; break; // ARAI standard petrol car
       case 'bus': carbonKg = assumedDistanceKm * 0.105; break;
       case 'train': carbonKg = assumedDistanceKm * 0.041; break;
       case 'bike': carbonKg = 0; break;
     }
 
     try {
-      await submitTransportCarbon(carbonKg, transportType);
+      await submitTransportCarbon(userId, carbonKg, transportType);
       onConfirm({ transportType, carbonKg });
     } catch (err) {
       console.error(err);

@@ -27,7 +27,7 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
     records: activityRecords,
     todayRecord,
   } = useDailyActivityRecords(storedEmail, 30_000); // 30 s is sufficient — triggers keep it fresh
-  const { user: userProfile } = useUserProfile(storedEmail);
+  const { user: userProfile, refetch: refetchProfile } = useUserProfile(storedEmail);
   const tracker = useDeviceCarbonTracker(storedEmail, todayRecord);
 
   // Write live carbon to localStorage so the sidebar in App.jsx can read it without prop drilling
@@ -93,10 +93,14 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
     return () => clearInterval(interval);
   }, [storedEmail]);
 
+  const footprintScore = typeof userProfile?.carbonScore === 'number'
+    ? userProfile.carbonScore
+    : Math.min(10, (liveCarbon / 2.0) * 10);
+
   const dashboardData = {
     ...tracker,
     carbon: liveCarbon,
-    footprintScore: liveCarbon,
+    footprintScore: footprintScore,
     totalXp: liveXp,
     level: Number(userProfile?.level ?? 1),
     levelProgressPct: Number(userProfile?.levelProgressPct ?? 0),
@@ -200,6 +204,7 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
                 JSON.stringify({ ...existing, carbon: data.new_carbon_footprint })
               );
             } catch {}
+            if (refetchProfile) refetchProfile();
           }}
         />
       )}
@@ -237,6 +242,7 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
 
       {pendingVehicleData && !vehicleModalShown && (
         <VehicleDetectionModal 
+          userId={storedEmail}
           mode={pendingVehicleData.mode} 
           speedKmh={pendingVehicleData.speed * 3.6} // m/s to km/h
           onClose={() => {
@@ -258,6 +264,7 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
                 );
               } catch {}
             }
+            if (refetchProfile) refetchProfile();
           }}
         />
       )}
@@ -280,6 +287,7 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
                 JSON.stringify({ ...existing, carbon: (existing.carbon || 0) + data.dailyKgCO2Contribution })
               );
             } catch {}
+            if (refetchProfile) refetchProfile();
           }}
         />
       )}

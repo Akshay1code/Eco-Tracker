@@ -11,6 +11,8 @@ import {
   MOVEMENT_THRESHOLD_METERS,
   TIME_TRIGGER_MINUTES,
   VEHICLE_EMISSION_KG_PER_KM,
+  TRAIN_EMISSION_KG_PER_KM,
+  BUS_EMISSION_KG_PER_KM,
 } from '../constants.js';
 
 function round(value, digits = 6) {
@@ -246,10 +248,23 @@ function calculateTransportImpact(activityType, distanceMeters) {
   }
 
   // Motor vehicle activities — emit carbon
-  const isVehicle = ['vehicle', 'transport', 'driving', 'car', 'motorbike', 'bike'].includes(normalizedActivity);
-  if (isVehicle) {
+  const isCar = ['driving', 'car', 'vehicle', 'transport'].includes(normalizedActivity);
+  const isBus = ['bus'].includes(normalizedActivity);
+  const isTrain = ['train', 'metro', 'subway', 'transit', 'rail', 'railway'].includes(normalizedActivity);
+  const isMotorbike = ['motorbike', 'bike', 'motorcycle', 'scooter', 'two_wheeler'].includes(normalizedActivity);
+
+  if (isCar || isBus || isTrain || isMotorbike) {
+    let factor = VEHICLE_EMISSION_KG_PER_KM; // default petrol car
+    if (isTrain) {
+      factor = TRAIN_EMISSION_KG_PER_KM;
+    } else if (isBus) {
+      factor = BUS_EMISSION_KG_PER_KM;
+    } else if (isMotorbike) {
+      factor = 0.076; // Two-wheeler average
+    }
+
     return {
-      emittedKg: round(distanceKm * VEHICLE_EMISSION_KG_PER_KM),
+      emittedKg: round(distanceKm * factor),
       savedKg: 0,
       direction: 'emitted',
     };

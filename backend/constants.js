@@ -12,6 +12,8 @@ export const INDIA_GRID_EMISSION_FACTOR = 0.82;
 
 // India petrol car average emission factor (ARAI data): ~0.171 kg CO₂/km
 export const VEHICLE_EMISSION_KG_PER_KM = 0.171;
+export const TRAIN_EMISSION_KG_PER_KM = 0.041;
+export const BUS_EMISSION_KG_PER_KM = 0.105;
 
 // CO₂ saved per km by walking/cycling instead of driving (same reference as vehicle factor)
 export const ACTIVE_TRAVEL_SAVED_KG_PER_KM = 0.171;

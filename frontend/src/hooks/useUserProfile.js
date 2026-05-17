@@ -1,10 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { fetchUserProfile } from '../lib/userApi.js';
 
 function useUserProfile(userId, pollIntervalMs = 5000) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(Boolean(userId));
   const [error, setError] = useState('');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const refetch = useCallback(() => {
+    setRefreshTrigger((prev) => prev + 1);
+  }, []);
 
   useEffect(() => {
     if (!userId) {
@@ -51,12 +56,13 @@ function useUserProfile(userId, pollIntervalMs = 5000) {
       isActive = false;
       window.clearInterval(interval);
     };
-  }, [pollIntervalMs, userId]);
+  }, [pollIntervalMs, userId, refreshTrigger]);
 
   return {
     user,
     isLoading,
     error,
+    refetch,
   };
 }
 

@@ -1,6 +1,15 @@
 import { ObjectId } from 'mongodb';
 import { getDb, isFileStoreMode } from '../db.js';
 import { WELCOME_XP } from '../constants.js';
+
+/** Maximum realistic daily kgCO₂ output for an Indian user (car + electricity + devices). */
+const MAX_DAILY_KG = 2.0;
+
+/** Convert raw kgCO₂ to the 0–10 carbon footprint score shown in the gauge. */
+function computeCarbonScore(kgCO2) {
+  const raw = Math.max(0, Number(kgCO2) || 0);
+  return Math.min(10, (raw / MAX_DAILY_KG) * 10);
+}
 import { buildProgressionSnapshot } from '../services/progression.js';
 import {
   findStoredUserByEmailKey,
@@ -75,6 +84,7 @@ function sanitizeUserDocument(document) {
     journal: Array.isArray(document.journal) ? document.journal : [],
     settings: normalizeUserSettings(document.settings),
     carbonFootprint: typeof document.carbonFootprint === 'number' ? document.carbonFootprint : 0.0,
+    carbonScore: typeof document.carbonScore === 'number' ? document.carbonScore : computeCarbonScore(document.carbonFootprint),
     dailyQuests: document.dailyQuests || { date: '', assigned: [], completed: [] },
     questStreak: typeof document.questStreak === 'number' ? document.questStreak : 0,
     activityStreak: typeof document.activityStreak === 'number' ? document.activityStreak : 0,
@@ -408,4 +418,34 @@ export function getDuplicateUserMessage(error) {
 
 export function toPublicUser(document) {
   return sanitizeUserDocument(document);
+}
+
+/**
+ * Persist an updated carbon footprint (raw kgCO₂) and its derived 0–10 score.
+ * Called by questService and userController after any emission-affecting event.
+ *
+ * @param {string} userId      - The user's email / identifier key.
+ * @param {number} totalKgCO2  - The new absolute total kgCO₂ for the user's carbon footprint.
+ * @returns {Promise<{ carbonFootprint: number, carbonScore: number }>}
+ */
+export async function syncUserCarbonFootprint(userId, totalKgCO2) {
+  const clampedKg = Math.max(0, Number(totalKgCO2) || 0);
+  const carbonScore = Number(computeCarbonScore(clampedKg).toFixed(4));
+  const timestamp = new Date().toISOString();
+
+  if (isFileStoreMode()) {
+    await updateStoredUserByEmailKey(normalizeLookupValue(userId), (currentUser) => ({
+      ...currentUser,
+      carbonFootprint: clampedKg,
+      carbonScore,
+      updatedAt: timestamp,
+    }));
+  } else {
+    await getUsersCollection().updateOne(
+      { emailKey: normalizeLookupValue(userId) },
+      { $set: { carbonFootprint: clampedKg, carbonScore, updatedAt: timestamp } }
+    );
+  }
+
+  return { carbonFootprint: clampedKg, carbonScore };
 }

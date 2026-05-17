@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { findUserByUserId, syncUserProgress } from '../models/userModel.js';
+import { findUserByUserId, syncUserProgress, syncUserCarbonFootprint } from '../models/userModel.js';
 import { getDb, isFileStoreMode } from '../db.js';
 import { updateStoredUserByEmailKey } from '../store/userStore.js';
 
@@ -173,11 +173,15 @@ export async function completeQuest(userId, questId) {
   const newXp = (user.score || 0) + xpReward;
   await syncUserProgress(userId, newXp);
 
+  // Sync Carbon Footprint and calculate score
+  const carbonResult = await syncUserCarbonFootprint(userId, newCarbonFootprint);
+
   return {
     quest_id: questId,
     carbon_reduction: quest.carbon_reduction,
     xp_reward: xpReward,
-    new_carbon_footprint: newCarbonFootprint,
+    new_carbon_footprint: carbonResult.carbonFootprint,
+    new_carbon_score: carbonResult.carbonScore,
     new_streak: newStreak
   };
 }
@@ -187,25 +191,10 @@ export async function updateCarbonFootprint(userId, deltaKgCO2) {
   if (!user) throw new Error('User not found');
 
   const newCarbonFootprint = Math.max(0, (user.carbonFootprint || 0) + deltaKgCO2);
-  const timestamp = new Date().toISOString();
+  const carbonResult = await syncUserCarbonFootprint(userId, newCarbonFootprint);
 
-  if (isFileStoreMode()) {
-    await updateStoredUserByEmailKey(normalizeLookupValue(userId), (u) => ({
-      ...u,
-      carbonFootprint: newCarbonFootprint,
-      updatedAt: timestamp
-    }));
-  } else {
-    await getDb().collection('users').updateOne(
-      { emailKey: normalizeLookupValue(userId) },
-      {
-        $set: {
-          carbonFootprint: newCarbonFootprint,
-          updatedAt: timestamp
-        }
-      }
-    );
-  }
-
-  return { carbonFootprint: newCarbonFootprint };
+  return {
+    carbonFootprint: carbonResult.carbonFootprint,
+    carbonScore: carbonResult.carbonScore
+  };
 }
