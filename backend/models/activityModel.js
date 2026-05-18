@@ -136,3 +136,116 @@ export async function deleteDailyRecordsForUser(userId) {
   const result = await getActivitiesCollection().deleteMany({ userId });
   return result.deletedCount || 0;
 }
+
+export async function aggregateCarbonAndSteps(userId, period = 'all') {
+  const records = await listDailyRecords(userId);
+  
+  if (records.length === 0) {
+    return {
+      period,
+      totalSteps: 0,
+      totalCarbonEmission: 0,
+      totalCarbonSaved: 0,
+      netCarbonImpact: 0,
+      transportCarbon: 0,
+      deviceCarbon: 0,
+      chargingCarbon: 0,
+      totalActiveTime: 0,
+      totalActivityDistance: 0,
+      totalXpEarned: 0,
+      averageEcoScore: 0,
+      recordCount: 0,
+    };
+  }
+
+  let filtered = records;
+
+  if (period === 'week') {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 7);
+    const cutoffDate = sevenDaysAgo.toISOString().slice(0, 10);
+    filtered = records.filter((r) => r.date >= cutoffDate);
+  } else if (period === 'month') {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30);
+    const cutoffDate = thirtyDaysAgo.toISOString().slice(0, 10);
+    filtered = records.filter((r) => r.date >= cutoffDate);
+  }
+
+  const totals = filtered.reduce(
+    (acc, record) => ({
+      totalSteps: acc.totalSteps + (Number(record.steps) || 0),
+      totalCarbonEmission: acc.totalCarbonEmission + (Number(record.carbon_emission) || 0),
+      totalCarbonSaved: acc.totalCarbonSaved + (Number(record.carbon_saved) || 0),
+      netCarbonImpact: acc.netCarbonImpact + (Number(record.net_carbon_impact) || 0),
+      transportCarbon: acc.transportCarbon + (Number(record.transport_carbon_emission) || 0),
+      deviceCarbon: acc.deviceCarbon + (Number(record.device_carbon_emission) || 0),
+      chargingCarbon: acc.chargingCarbon + (Number(record.charging_carbon_emission) || 0),
+      totalActiveTime: acc.totalActiveTime + (Number(record.active_time) || 0),
+      totalActivityDistance: acc.totalActivityDistance + (Number(record.activity_distance) || 0),
+      totalXpEarned: acc.totalXpEarned + (Number(record.xp_earned) || 0),
+      totalEcoScore: acc.totalEcoScore + (Number(record.eco_score) || 0),
+    }),
+    {
+      totalSteps: 0,
+      totalCarbonEmission: 0,
+      totalCarbonSaved: 0,
+      netCarbonImpact: 0,
+      transportCarbon: 0,
+      deviceCarbon: 0,
+      chargingCarbon: 0,
+      totalActiveTime: 0,
+      totalActivityDistance: 0,
+      totalXpEarned: 0,
+      totalEcoScore: 0,
+    }
+  );
+
+  return {
+    period,
+    totalSteps: totals.totalSteps,
+    totalCarbonEmission: Number(totals.totalCarbonEmission.toFixed(6)),
+    totalCarbonSaved: Number(totals.totalCarbonSaved.toFixed(6)),
+    netCarbonImpact: Number(totals.netCarbonImpact.toFixed(6)),
+    transportCarbon: Number(totals.transportCarbon.toFixed(6)),
+    deviceCarbon: Number(totals.deviceCarbon.toFixed(6)),
+    chargingCarbon: Number(totals.chargingCarbon.toFixed(6)),
+    totalActiveTime: totals.totalActiveTime,
+    totalActivityDistance: Number(totals.totalActivityDistance.toFixed(2)),
+    totalXpEarned: totals.totalXpEarned,
+    averageEcoScore: Number((totals.totalEcoScore / filtered.length).toFixed(2)),
+    recordCount: filtered.length,
+    dateRange: {
+      start: filtered[filtered.length - 1]?.date,
+      end: filtered[0]?.date,
+    },
+  };
+}
+
+export async function getCarbonMetrics(userId, date) {
+  const record = await getDailyRecord(userId, date);
+
+  return {
+    date: record.date,
+    steps: record.steps,
+    carbonMetrics: {
+      totalEmission: Number(record.carbon_emission.toFixed(6)),
+      carbonSaved: Number(record.carbon_saved.toFixed(6)),
+      netImpact: Number(record.net_carbon_impact.toFixed(6)),
+      breakdown: {
+        transport: Number(record.transport_carbon_emission.toFixed(6)),
+        device: Number(record.device_carbon_emission.toFixed(6)),
+        charging: Number(record.charging_carbon_emission.toFixed(6)),
+      },
+    },
+    activityMetrics: {
+      steps: record.steps,
+      activeTime: record.active_time,
+      distance: Number(record.activity_distance.toFixed(2)),
+    },
+    performance: {
+      xpEarned: record.xp_earned,
+      ecoScore: record.eco_score,
+    },
+  };
+}

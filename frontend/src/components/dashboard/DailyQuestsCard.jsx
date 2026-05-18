@@ -25,12 +25,13 @@ function DailyQuestsCard({ userId, onQuestCompleted }) {
     const loadQuests = async () => {
       try {
         setLoading(true);
+        setError(null);
         const { data } = await fetchDailyQuests(userId);
         setQuests(data.quests);
         setCompleted(data.completed);
         setStreak(data.streak);
-      } catch {
-        setError('Failed to load daily quests.');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load daily quests.');
       } finally {
         setLoading(false);
       }

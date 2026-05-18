@@ -6,6 +6,8 @@ import {
   postBatteryTrigger,
   postGoogleFitTrigger,
   postTimeTrigger,
+  getCarbonAndStepsMetrics,
+  getDailyCarbon,
 } from '../controllers/activityController.js';
 
 function asyncRoute(handler) {
@@ -73,6 +75,42 @@ export function createActivityRouter() {
     '/triggers/google-fit',
     asyncRoute(async (request, response) => {
       const result = await postGoogleFitTrigger(request.body);
+      response.status(result.status).json(result.payload);
+    })
+  );
+
+  /**
+   * GET /api/metrics/carbon-and-steps
+   * Retrieves aggregated carbon emission and steps data with optional period filtering.
+   *
+   * Query params:
+   * - userId: User ID (required)
+   * - period: 'all', 'week', or 'month' (default: 'all')
+   *
+   * Returns: Aggregated metrics including total steps, carbon emission, carbon saved, etc.
+   */
+  router.get(
+    '/metrics/carbon-and-steps',
+    asyncRoute(async (request, response) => {
+      const result = await getCarbonAndStepsMetrics(request.query);
+      response.status(result.status).json(result.payload);
+    })
+  );
+
+  /**
+   * GET /api/metrics/daily-carbon
+   * Retrieves detailed carbon and activity metrics for a specific date.
+   *
+   * Query params:
+   * - userId: User ID (required)
+   * - date: Date in YYYY-MM-DD format (default: today)
+   *
+   * Returns: Detailed breakdown of carbon metrics, activity metrics, and performance data.
+   */
+  router.get(
+    '/metrics/daily-carbon',
+    asyncRoute(async (request, response) => {
+      const result = await getDailyCarbon(request.query);
       response.status(result.status).json(result.payload);
     })
   );

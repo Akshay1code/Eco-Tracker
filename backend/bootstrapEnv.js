@@ -13,10 +13,9 @@ function stripWrappingQuotes(value) {
   return value;
 }
 
-function loadLocalEnvFile() {
-  const envPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '.env');
+function loadEnvFileFromPath(envPath) {
   if (!fs.existsSync(envPath)) {
-    return;
+    return false;
   }
 
   const content = fs.readFileSync(envPath, 'utf8');
@@ -38,6 +37,20 @@ function loadLocalEnvFile() {
 
     const value = stripWrappingQuotes(line.slice(separatorIndex + 1).trim());
     process.env[key] = value;
+  }
+
+  return true;
+}
+
+function loadLocalEnvFile() {
+  const backendDirectory = path.dirname(fileURLToPath(import.meta.url));
+  const candidateFiles = ['.env', ',env'];
+
+  for (const fileName of candidateFiles) {
+    const didLoad = loadEnvFileFromPath(path.join(backendDirectory, fileName));
+    if (didLoad) {
+      return;
+    }
   }
 }
 

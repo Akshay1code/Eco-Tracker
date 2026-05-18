@@ -1,4 +1,4 @@
-import { getDailyRecord, listDailyRecords, mutateDailyRecord } from '../models/activityModel.js';
+import { getDailyRecord, listDailyRecords, mutateDailyRecord, aggregateCarbonAndSteps, getCarbonMetrics } from '../models/activityModel.js';
 import { findUserByUserId, syncUserProgress, syncUserActivityStreak, toPublicUser } from '../models/userModel.js';
 import {
   applyActivityTrigger,
@@ -268,6 +268,52 @@ export async function postGoogleFitTrigger(body = {}) {
       carbon_saved: record.carbon_saved,
       xp_earned: record.xp_earned,
       eco_score: record.eco_score,
+    },
+  };
+}
+
+export async function getCarbonAndStepsMetrics(searchParams) {
+  const userId = resolveUserId({}, searchParams);
+  const missingUserId = requireUserId(userId);
+  if (missingUserId) {
+    return missingUserId;
+  }
+
+  const period = getParam(searchParams, 'period') || 'all';
+  if (!['all', 'week', 'month'].includes(period)) {
+    return {
+      status: 400,
+      payload: { error: 'period must be one of: all, week, month' },
+    };
+  }
+
+  const metrics = await aggregateCarbonAndSteps(userId, period);
+
+  return {
+    status: 200,
+    payload: {
+      success: true,
+      metrics,
+    },
+  };
+}
+
+export async function getDailyCarbon(searchParams) {
+  const userId = resolveUserId({}, searchParams);
+  const missingUserId = requireUserId(userId);
+  if (missingUserId) {
+    return missingUserId;
+  }
+
+  const date = getParam(searchParams, 'date') || new Date().toISOString().slice(0, 10);
+
+  const carbonMetrics = await getCarbonMetrics(userId, date);
+
+  return {
+    status: 200,
+    payload: {
+      success: true,
+      data: carbonMetrics,
     },
   };
 }

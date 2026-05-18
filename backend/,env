@@ -1,0 +1,10 @@
+# Backend server settings
+PORT=3001
+# MongoDB Atlas settings
+MONGODB_URI=mongodb+srv://menonakshay47_db_user:FPQSdDoF2x4uVE3t@eco-tracker01.vxoyrzz.mongodb.net/?appName=Eco-Tracker01
+# Optional fallback if your network blocks Atlas SRV DNS lookups.
+# Paste the standard Atlas "mongodb://..." driver string here when needed.
+MONGODB_URI_FALLBACK=mongodb://menonakshay47_db_user:FPQSdDoF2x4uVE3t@ac-vutfnqz-shard-00-00.vxoyrzz.mongodb.net:27017,ac-vutfnqz-shard-00-01.vxoyrzz.mongodb.net:27017,ac-vutfnqz-shard-00-02.vxoyrzz.mongodb.net:27017/?ssl=true&authSource=admin&replicaSet=atlas-jfixqx-shard-0&retryWrites=true&w=majority&appName=Eco-Tracker01
+MONGODB_DB_NAME= ecotrackerdb
+MONGODB_SERVER_SELECTION_TIMEOUT_MS=5000
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173

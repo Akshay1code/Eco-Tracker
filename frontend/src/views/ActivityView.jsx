@@ -378,7 +378,7 @@ export default function ActivityView({ onLogout, googleFit }) {
                 </div>
                 <div>
                   <h2 className="gfit-sync-title">Google Fit sync is active</h2>
-                  <div className="activity-section-subtitle" style={{ margin: '0.25rem 0 0', color: '#90caf9' }}>
+                  <div className="activity-section-subtitle" style={{ margin: '0.25rem 0 0', color: '#4b7f52' }}>
                     Activity totals from Google Fit are feeding today&apos;s eco record.
                   </div>
                 </div>
@@ -445,7 +445,7 @@ export default function ActivityView({ onLogout, googleFit }) {
       ) : (
         <section className="activity-card activity-card-padded">
           <div className="records-card-title" style={{ marginBottom: '0.5rem' }}>
-            <MdSensors style={{ color: '#1565c0', fontSize: '1.25rem' }} />
+            <MdSensors style={{ color: '#2e7d32', fontSize: '1.25rem' }} />
             Google Fit is available
           </div>
           <p className="activity-section-subtitle" style={{ marginBottom: 0 }}>
