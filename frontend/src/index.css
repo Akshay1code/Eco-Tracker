@@ -1,0 +1,114 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap');
+
+@theme {
+  --color-eco-deepest: #0f3d1f;
+  --color-eco-dark: #1b5e20;
+  --color-eco-mid: #2e7d32;
+  --color-eco-base: #388e3c;
+  --color-eco-light: #43a047;
+  --color-eco-mint: #81c784;
+  --color-eco-lime: #69f07a;
+  --color-eco-pale: #c8e6c9;
+  --color-eco-bg: #f0faf2;
+  --color-eco-surface: #e8f5e9;
+
+  --color-xp-gold: #f9a825;
+  --color-xp-amber: #ff8f00;
+  --color-xp-warn: #f57c00;
+
+  --animate-shimmer: shimmer 2.5s linear infinite;
+  --animate-pulse_gold: pulse_gold 2s ease-in-out infinite;
+  --animate-bar_fill: bar_fill 0.8s ease forwards;
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  @keyframes pulse_gold {
+    0%, 100% { box-shadow: 0 6px 20px rgba(249,168,37,0.45); }
+    50% { box-shadow: 0 6px 28px rgba(249,168,37,0.75); }
+  }
+  @keyframes bar_fill {
+    from { width: 0%; }
+    to { width: var(--xp-width); }
+  }
+}
+
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+@media (min-width: 1025px) {
+  html.signup-page-active,
+  body.signup-page-active {
+    overflow: hidden;
+  }
+}
+
+@keyframes sky-pulse {
+  0%,100% { opacity: 1 }
+  50% { opacity: .95 }
+}
+
+@keyframes sun-glow {
+  0%,100% { transform: scale(1); opacity: .9 }
+  50% { transform: scale(1.1); opacity: 1 }
+}
+
+@keyframes rotate-rays {
+  to { transform: rotate(360deg) }
+}
+
+@keyframes float-cloud {
+  0%,100% { transform: translate(0,0) }
+  25% { transform: translate(30px,-10px) }
+  50% { transform: translate(0,-20px) }
+  75% { transform: translate(-30px,-10px) }
+}
+
+@keyframes sway {
+  0%,100% { transform: rotate(0) }
+  25% { transform: rotate(4deg) }
+  75% { transform: rotate(-4deg) }
+}
+
+@keyframes breathe-leaves {
+  0%,100% { transform: translateX(-50%) scale(1) }
+  50% { transform: translateX(-47%) scale(1.08) }
+}
+
+@keyframes card-float {
+  50% { transform: translateY(-10px) }
+}
+
+@keyframes glow-pulse {
+  0%,100% { opacity: .3 }
+  50% { opacity: .6 }
+}
+
+.animate-sky-pulse { animation: sky-pulse 8s ease-in-out infinite }
+.animate-sun-glow { animation: sun-glow 4s ease-in-out infinite }
+.animate-rotate-rays { animation: rotate-rays 60s linear infinite }
+.animate-float-cloud { animation: float-cloud 20s ease-in-out infinite }
+.animate-sway { animation: sway 3s ease-in-out infinite }
+.animate-breathe-leaves { animation: breathe-leaves 2.5s ease-in-out infinite }
+.animate-card-float { animation: card-float 6s ease-in-out infinite }
+.animate-glow-pulse { animation: glow-pulse 3s ease-in-out infinite }
+

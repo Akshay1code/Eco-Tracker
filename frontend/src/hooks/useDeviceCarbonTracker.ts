@@ -1,0 +1,1148 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { sendActivityTrigger, sendBatteryTrigger, sendTimeTrigger } from '../lib/trackingApi.js';
+import {
+  createRealtimePedometer,
+  type DebugSignalPoint,
+  type PedometerActivity,
+  type StepLogEntry,
+} from '../lib/pedometer.ts';
+
+type MotionPermission = 'prompt' | 'granted' | 'denied' | 'unsupported';
+type ActivityKind = PedometerActivity | 'vehicle';
+type MovementMode = 'idle' | 'walking' | 'running' | 'cycling' | 'two_wheeler' | 'car_or_bus' | 'train_or_metro';
+type TrackingStatus = 'active' | 'paused' | 'permission-denied' | 'unsupported';
+
+interface BatteryManagerLike extends EventTarget {
+  charging: boolean;
+  level: number;
+}
+
+interface TrackerAlert {
+  title: string;
+  message: string;
+}
+
+interface PersistedDailyRecord {
+  date?: string;
+  steps?: number;
+  active_time?: number;
+  activity_distance?: number;
+}
+
+interface CachedDailyTotals {
+  date: string;
+  steps: number;
+  activeMinutes: number;
+  distanceKm: number;
+}
+
+export interface DeviceCarbonData {
+  carbon: number;
+  batteryUsed: number;
+  distance: number;
+  gpsDistance: number;
+  estimatedDistance: number;
+  speed: number;
+  steps: number;
+  activeMinutes: number;
+  location: { latitude: number; longitude: number } | null;
+  screenTime: number;
+  permissionDenied: boolean;
+  motionPermission: MotionPermission;
+  activity: ActivityKind;
+  movementMode: MovementMode;
+  movementLabel: string;
+  trackingStatus: TrackingStatus;
+  meaningfulUpdates: number;
+  lastMovementDistance: number;
+  samplingIntervalSeconds: number;
+  movementThresholdMeters: number;
+  cadence: number;
+  caloriesBurned: number;
+  co2SavedKg: number;
+  lastStepConfidence: number;
+  averageStepConfidence: number;
+  debugSignals: DebugSignalPoint[];
+  recentSteps: StepLogEntry[];
+  charging: boolean;
+  chargingTimeMinutes: number;
+  chargingEnergyKwh: number;
+  chargingCarbonKg: number;
+  batteryAlert: TrackerAlert | null;
+  /** XP/score returned by the backend after the last activity trigger. Null until first successful sync. */
+  backendScore: number | null;
+  /** Net carbon impact (kg) returned by the backend record. Null until first successful sync. */
+  backendCarbonKg: number | null;
+  supported: { geolocation: boolean; battery: boolean; motion: boolean };
+  requestMotionAccess: () => Promise<boolean>;
+  dismissBatteryAlert: () => void;
+}
+
+type GeoPoint = { latitude: number; longitude: number };
+
+const EARTH_RADIUS_KM = 6371;
+const GPS_SAMPLE_INTERVAL_MS = 60_000;
+const GPS_CACHE_MAX_AGE_MS = 60_000;
+const GPS_TIMEOUT_MS = 10_000;
+const GPS_MOVEMENT_THRESHOLD_METERS = 20;
+const GPS_MAX_ACCEPTABLE_ACCURACY_METERS = 100;
+const WALKING_SPEED_MIN_MPS = 0.55;
+const RUNNING_SPEED_MIN_MPS = 2.2;
+const VEHICLE_SPEED_MIN_MPS = 5.8;
+const RECENT_STEP_WINDOW_MS = 4_000;
+const STEP_LENGTH_WALKING_METERS = 0.76;
+const STEP_LENGTH_RUNNING_METERS = 1.02;
+const WALKING_CALORIES_PER_STEP = 0.042;
+const RUNNING_CALORIES_PER_STEP = 0.065;
+const CO2_SAVED_PER_KM_WALKED = 0.192;
+const TIME_TRIGGER_INTERVAL_MS = 15 * 60_000;
+const CHARGER_POWER_WATTS = 15;
+const GRID_EMISSION_FACTOR = 0.727;
+const DAY_CHECK_INTERVAL_MS = 30_000;
+const STEP_DB_SYNC_INTERVAL_MS = 15_000;
+const DAILY_TOTALS_CACHE_PREFIX = 'eco_tracker_totals';
+
+function getCurrentDayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function toRad(value: number) {
+  return (value * Math.PI) / 180;
+}
+
+function round(value: number, digits = 3) {
+  return Number(value.toFixed(digits));
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function getDailyTotalsCacheKey(userEmail: string | null, dateKey: string) {
+  if (!userEmail || !dateKey) {
+    return '';
+  }
+
+  return `${DAILY_TOTALS_CACHE_PREFIX}:${userEmail.toLowerCase()}:${dateKey}`;
+}
+
+function readCachedDailyTotals(userEmail: string | null, dateKey: string): CachedDailyTotals | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const storageKey = getDailyTotalsCacheKey(userEmail, dateKey);
+  if (!storageKey) {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(storageKey);
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!parsed || parsed.date !== dateKey) {
+      return null;
+    }
+
+    return {
+      date: dateKey,
+      steps: Math.max(0, Number(parsed.steps || 0)),
+      activeMinutes: Math.max(0, round(Number(parsed.activeMinutes || 0), 2)),
+      distanceKm: Math.max(0, Number(parsed.distanceKm || 0)),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedDailyTotals(userEmail: string | null, payload: CachedDailyTotals) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const storageKey = getDailyTotalsCacheKey(userEmail, payload.date);
+  if (!storageKey) {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(payload));
+  } catch {
+    // Ignore storage write failures in restricted/private contexts.
+  }
+}
+
+function distanceKm(prev: GeoPoint, curr: GeoPoint) {
+  const dLat = toRad(curr.latitude - prev.latitude);
+  const dLng = toRad(curr.longitude - prev.longitude);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(prev.latitude)) *
+      Math.cos(toRad(curr.latitude)) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  return 2 * EARTH_RADIUS_KM * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function deriveActivityFromSignals(
+  speedMps: number,
+  motionActivity: PedometerActivity,
+  cadenceSpm: number,
+  lastStepAt: number,
+  now: number
+): ActivityKind {
+  const hasRecentSteps = lastStepAt > 0 && now - lastStepAt <= RECENT_STEP_WINDOW_MS;
+
+  if (speedMps >= VEHICLE_SPEED_MIN_MPS && !hasRecentSteps) {
+    return 'vehicle';
+  }
+
+  if (hasRecentSteps && (motionActivity === 'running' || cadenceSpm >= 140 || speedMps >= RUNNING_SPEED_MIN_MPS)) {
+    return 'running';
+  }
+
+  if (hasRecentSteps && (motionActivity === 'walking' || cadenceSpm >= 60 || speedMps >= WALKING_SPEED_MIN_MPS)) {
+    return 'walking';
+  }
+
+  if (speedMps >= RUNNING_SPEED_MIN_MPS && hasRecentSteps) {
+    return 'running';
+  }
+
+  if (speedMps >= WALKING_SPEED_MIN_MPS && speedMps < VEHICLE_SPEED_MIN_MPS) {
+    return 'walking';
+  }
+
+  return 'idle';
+}
+
+function deriveMovementMode(speedKmh: number): MovementMode {
+  const normalizedSpeedKmh = Math.max(0, Number(speedKmh || 0));
+
+  if (normalizedSpeedKmh < 1) {
+    return 'idle';
+  }
+
+  if (normalizedSpeedKmh < 6) {
+    return 'walking';
+  }
+
+  if (normalizedSpeedKmh < 12) {
+    return 'running';
+  }
+
+  if (normalizedSpeedKmh < 30) {
+    return 'two_wheeler';
+  }
+
+  if (normalizedSpeedKmh < 60) {
+    return 'car_or_bus';
+  }
+
+  if (normalizedSpeedKmh >= 60) {
+    return 'train_or_metro';
+  }
+
+  return 'idle';
+}
+
+function formatMovementLabel(mode: MovementMode) {
+  switch (mode) {
+    case 'walking':
+      return 'Walking';
+    case 'running':
+      return 'Running';
+    case 'cycling':
+      return 'Cycling';
+    case 'two_wheeler':
+      return 'Likely Bike / Scooter';
+    case 'car_or_bus':
+      return 'Likely Car / Bus';
+    case 'train_or_metro':
+      return 'Likely Train / Metro';
+    default:
+      return 'Idle';
+  }
+}
+
+export default function useDeviceCarbonTracker(
+  userEmail: string | null,
+  initialRecord: PersistedDailyRecord | null = null
+): DeviceCarbonData {
+  const [batteryUsed, setBatteryUsed] = useState(0);
+  const [gpsDistance, setGpsDistance] = useState(0);
+  const [estimatedDistance, setEstimatedDistance] = useState(0);
+  const [speed, setSpeed] = useState(0);
+  const [steps, setSteps] = useState(0);
+  const [activeMinutes, setActiveMinutes] = useState(0);
+  const [location, setLocation] = useState<GeoPoint | null>(null);
+  const [screenTime, setScreenTime] = useState(0);
+  const [permissionDenied, setPermissionDenied] = useState(false);
+  const [motionPermission, setMotionPermission] = useState<MotionPermission>('prompt');
+  const [activity, setActivity] = useState<ActivityKind>('idle');
+  const [trackingStatus, setTrackingStatus] = useState<TrackingStatus>('active');
+  const [meaningfulUpdates, setMeaningfulUpdates] = useState(0);
+  const [lastMovementDistance, setLastMovementDistance] = useState(0);
+  const [cadence, setCadence] = useState(0);
+  const [caloriesBurned, setCaloriesBurned] = useState(0);
+  const [co2SavedKg, setCo2SavedKg] = useState(0);
+  const [lastStepConfidence, setLastStepConfidence] = useState(0);
+  const [averageStepConfidence, setAverageStepConfidence] = useState(0);
+  const [debugSignals, setDebugSignals] = useState<DebugSignalPoint[]>([]);
+  const [recentSteps, setRecentSteps] = useState<StepLogEntry[]>([]);
+  const [charging, setCharging] = useState(false);
+  const [chargingTimeMinutes, setChargingTimeMinutes] = useState(0);
+  const [chargingEnergyKwh, setChargingEnergyKwh] = useState(0);
+  const [chargingCarbonKg, setChargingCarbonKg] = useState(0);
+  const [batteryAlert, setBatteryAlert] = useState<TrackerAlert | null>(null);
+  const [backendScore, setBackendScore] = useState<number | null>(null);
+  const [backendCarbonKg, setBackendCarbonKg] = useState<number | null>(null);
+  const [persistedBaseline, setPersistedBaseline] = useState({
+    date: '',
+    steps: 0,
+    activeMinutes: 0,
+    distanceKm: 0,
+  });
+
+  const pedometerRef = useRef(createRealtimePedometer());
+  const prevLocationRef = useRef<{ point: GeoPoint; at: number } | null>(null);
+  const sampleTimerRef = useRef<number | null>(null);
+  const motionPermissionRef = useRef<MotionPermission>('prompt');
+  const permissionDeniedRef = useRef(false);
+  const chargingStateRef = useRef<boolean | null>(null);
+  const chargingStartedAtRef = useRef<number | null>(null);
+  const movementCarryMetersRef = useRef(0);
+  const lastMovementTsRef = useRef(0);
+  const lastDebugSyncAtRef = useRef(0);
+  const gpsDistanceRef = useRef(0);
+  const estimatedDistanceRef = useRef(0);
+  const stepsRef = useRef(0);
+  const cadenceRef = useRef(0);
+  const caloriesRef = useRef(0);
+  const co2SavedRef = useRef(0);
+  const activeMinutesRef = useRef(0);
+  const lastStepConfidenceRef = useRef(0);
+  const averageStepConfidenceRef = useRef(0);
+  const lastReportedStepsRef = useRef(0);
+  const lastReportedDistanceKmRef = useRef(0);
+  const baselineDateRef = useRef('');
+
+  const applyBackendActivityResponse = useCallback((res: any) => {
+    if (res?.user?.score != null) {
+      setBackendScore(Number(res.user.score));
+    }
+
+    const netImpact =
+      res?.net_carbon_impact ??
+      res?.record?.net_carbon_impact ??
+      res?.record?.carbon_emission;
+
+    if (netImpact != null) {
+      setBackendCarbonKg(Number(netImpact));
+    }
+  }, []);
+
+  const flushActivityDelta = useCallback(
+    (payload: {
+      distanceMeters?: number;
+      stepsDelta?: number;
+      activeMinutes?: number;
+      activityType?: string;
+      cadenceSpm?: number;
+      confidence?: number;
+      avgConfidence?: number;
+      timestamp?: string;
+    }) => {
+      if (!userEmail) {
+        return Promise.resolve(null);
+      }
+
+      const distanceMeters = Math.max(0, Number(payload.distanceMeters || 0));
+      const stepsDelta = Math.max(0, Math.floor(Number(payload.stepsDelta || 0)));
+      const activeMinutes = Math.max(0, Number(payload.activeMinutes || 0));
+
+      if (distanceMeters <= 0 && stepsDelta <= 0 && activeMinutes <= 0) {
+        return Promise.resolve(null);
+      }
+
+      return sendActivityTrigger({
+        userId: userEmail,
+        distanceMeters: round(distanceMeters, 2),
+        stepsDelta,
+        activeMinutes,
+        activityType: payload.activityType || 'walking',
+        cadenceSpm: round(Number(payload.cadenceSpm || 0), 1),
+        confidence: round(Number(payload.confidence || 0), 3),
+        avgConfidence: round(Number(payload.avgConfidence || 0), 3),
+        timestamp: payload.timestamp || new Date().toISOString(),
+      })
+        .then((res) => {
+          applyBackendActivityResponse(res);
+          return res;
+        })
+        .catch(() => null);
+    },
+    [applyBackendActivityResponse, userEmail]
+  );
+
+  const supported = useMemo(
+    () => ({
+      geolocation: typeof navigator !== 'undefined' && 'geolocation' in navigator,
+      battery: typeof navigator !== 'undefined' && 'getBattery' in navigator,
+      motion: typeof window !== 'undefined' && 'DeviceMotionEvent' in window,
+    }),
+    []
+  );
+
+  const carbon = useMemo(
+    () => round(Math.max(chargingCarbonKg - co2SavedKg, 0), 4),
+    [chargingCarbonKg, co2SavedKg]
+  );
+
+  const sessionDistance = useMemo(
+    () => round(Math.max(gpsDistance, estimatedDistance), 3),
+    [gpsDistance, estimatedDistance]
+  );
+
+  const totalSteps = useMemo(() => persistedBaseline.steps + steps, [persistedBaseline.steps, steps]);
+  const totalActiveMinutes = useMemo(
+    () => persistedBaseline.activeMinutes + activeMinutes,
+    [activeMinutes, persistedBaseline.activeMinutes]
+  );
+  const distance = useMemo(
+    () => round(persistedBaseline.distanceKm + sessionDistance, 3),
+    [persistedBaseline.distanceKm, sessionDistance]
+  );
+  const movementMode = useMemo(
+    () => deriveMovementMode(speed),
+    [speed]
+  );
+  const movementLabel = useMemo(
+    () => formatMovementLabel(movementMode),
+    [movementMode]
+  );
+
+  const buildBaseline = useCallback((dateKey: string, record: PersistedDailyRecord | null = null) => {
+    const cached = readCachedDailyTotals(userEmail, dateKey);
+    const recordSteps = Math.max(0, Number(record?.steps || 0));
+    const recordActiveMinutes = Math.max(0, round(Number(record?.active_time || 0), 2));
+    const recordDistanceKm = Math.max(0, Number(record?.activity_distance || 0));
+
+    return {
+      date: dateKey,
+      // Prefer the best known daily total so reloads do not drop unsynced local progress.
+      steps: Math.max(recordSteps, cached?.steps || 0),
+      activeMinutes: Math.max(recordActiveMinutes, cached?.activeMinutes || 0),
+      distanceKm: Math.max(recordDistanceKm, cached?.distanceKm || 0),
+    };
+  }, [userEmail]);
+
+  const resetDailySession = useCallback((dateKey: string, record: PersistedDailyRecord | null = null) => {
+    pedometerRef.current.reset();
+    prevLocationRef.current = null;
+    movementCarryMetersRef.current = 0;
+    lastMovementTsRef.current = 0;
+    lastDebugSyncAtRef.current = 0;
+    gpsDistanceRef.current = 0;
+    estimatedDistanceRef.current = 0;
+    stepsRef.current = 0;
+    activeMinutesRef.current = 0;
+    cadenceRef.current = 0;
+    caloriesRef.current = 0;
+    co2SavedRef.current = 0;
+    lastStepConfidenceRef.current = 0;
+    averageStepConfidenceRef.current = 0;
+    lastReportedStepsRef.current = 0;
+    lastReportedDistanceKmRef.current = 0;
+    baselineDateRef.current = dateKey;
+
+    setPersistedBaseline(buildBaseline(dateKey, record));
+    setGpsDistance(0);
+    setEstimatedDistance(0);
+    setSpeed(0);
+    setSteps(0);
+    setActiveMinutes(0);
+    setLocation(null);
+    setActivity('idle');
+    setMeaningfulUpdates(0);
+    setLastMovementDistance(0);
+    setCadence(0);
+    setCaloriesBurned(0);
+    setCo2SavedKg(0);
+    setLastStepConfidence(0);
+    setAverageStepConfidence(0);
+    setDebugSignals([]);
+    setRecentSteps([]);
+  }, [buildBaseline]);
+
+  const addSessionActiveMinutes = useCallback((deltaMinutes: number) => {
+    if (deltaMinutes <= 0) {
+      return 0;
+    }
+
+    activeMinutesRef.current = round(activeMinutesRef.current + deltaMinutes, 2);
+    setActiveMinutes(activeMinutesRef.current);
+    return activeMinutesRef.current;
+  }, []);
+
+  useEffect(() => {
+    const recordDate = initialRecord?.date || '';
+    const currentDayKey = getCurrentDayKey();
+
+    if (!baselineDateRef.current) {
+      resetDailySession(recordDate || currentDayKey, initialRecord);
+      return;
+    }
+
+    if (recordDate && baselineDateRef.current !== recordDate) {
+      resetDailySession(recordDate, initialRecord);
+      return;
+    }
+
+    if (!recordDate && baselineDateRef.current !== currentDayKey) {
+      resetDailySession(currentDayKey, null);
+      return;
+    }
+
+    // If the hook booted before today's backend record arrived, hydrate the
+    // same-day baseline exactly once while the local session is still empty.
+    const sessionIsStillEmpty =
+      stepsRef.current === 0 &&
+      activeMinutesRef.current === 0 &&
+      gpsDistanceRef.current === 0 &&
+      estimatedDistanceRef.current === 0 &&
+      lastReportedStepsRef.current === 0 &&
+      lastReportedDistanceKmRef.current === 0;
+
+    if (recordDate && recordDate === baselineDateRef.current && sessionIsStillEmpty) {
+      const nextBaseline = buildBaseline(recordDate, initialRecord);
+      setPersistedBaseline((prev) => {
+        if (
+          prev.date === nextBaseline.date &&
+          prev.steps === nextBaseline.steps &&
+          prev.activeMinutes === nextBaseline.activeMinutes &&
+          prev.distanceKm === nextBaseline.distanceKm
+        ) {
+          return prev;
+        }
+
+        return nextBaseline;
+      });
+    }
+  }, [buildBaseline, initialRecord, resetDailySession]);
+
+  useEffect(() => {
+    if (!userEmail) {
+      return;
+    }
+
+    const dateKey = baselineDateRef.current || persistedBaseline.date || getCurrentDayKey();
+    writeCachedDailyTotals(userEmail, {
+      date: dateKey,
+      steps: totalSteps,
+      activeMinutes: totalActiveMinutes,
+      distanceKm: distance,
+    });
+  }, [distance, persistedBaseline.date, totalActiveMinutes, totalSteps, userEmail]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const interval = window.setInterval(() => {
+      const currentDayKey = getCurrentDayKey();
+      if (baselineDateRef.current && baselineDateRef.current !== currentDayKey) {
+        resetDailySession(currentDayKey, null);
+      }
+    }, DAY_CHECK_INTERVAL_MS);
+
+    return () => window.clearInterval(interval);
+  }, [resetDailySession]);
+
+  const markMovement = useCallback(() => {
+    lastMovementTsRef.current = Date.now();
+  }, []);
+
+  const syncDebugSnapshot = useCallback((force = false) => {
+    const now = Date.now();
+    if (!force && now - lastDebugSyncAtRef.current < 1_500) {
+      return;
+    }
+
+    const snapshot = pedometerRef.current.getSnapshot();
+    setDebugSignals(snapshot.debugSignals.slice(-90));
+    setRecentSteps(snapshot.recentSteps);
+    lastDebugSyncAtRef.current = now;
+  }, []);
+
+  const syncPedometerSnapshot = useCallback((forceDebug = false) => {
+    const snapshot = pedometerRef.current.getSnapshot();
+    const nextEstimatedDistance = round(snapshot.distanceMeters / 1000, 3);
+
+    estimatedDistanceRef.current = nextEstimatedDistance;
+    stepsRef.current = snapshot.steps;
+    cadenceRef.current = snapshot.cadenceSpm;
+    caloriesRef.current = snapshot.caloriesBurned;
+    co2SavedRef.current = snapshot.co2SavedKg;
+
+    setEstimatedDistance(nextEstimatedDistance);
+    setSteps(snapshot.steps);
+    setCadence(snapshot.cadenceSpm);
+    setCaloriesBurned(snapshot.caloriesBurned);
+    setCo2SavedKg(snapshot.co2SavedKg);
+    setLastStepConfidence(snapshot.lastStepConfidence);
+    setAverageStepConfidence(snapshot.averageConfidence);
+    lastStepConfidenceRef.current = snapshot.lastStepConfidence;
+    averageStepConfidenceRef.current = snapshot.averageConfidence;
+    syncDebugSnapshot(forceDebug);
+    return snapshot;
+  }, [syncDebugSnapshot]);
+
+  const applyGpsFallbackSteps = useCallback((distanceMetersDelta: number, activityKind: 'walking' | 'running', speedMps: number) => {
+    const stepLengthMeters = activityKind === 'running' ? STEP_LENGTH_RUNNING_METERS : STEP_LENGTH_WALKING_METERS;
+    movementCarryMetersRef.current += distanceMetersDelta;
+    const stepsDelta = Math.floor(movementCarryMetersRef.current / stepLengthMeters);
+
+    if (stepsDelta <= 0) {
+      return 0;
+    }
+
+    movementCarryMetersRef.current -= stepsDelta * stepLengthMeters;
+    const distanceDeltaKm = (stepsDelta * stepLengthMeters) / 1000;
+    const cadenceEstimate = clamp((speedMps / stepLengthMeters) * 60, activityKind === 'running' ? 130 : 60, activityKind === 'running' ? 190 : 135);
+    const caloriesDelta = stepsDelta * (activityKind === 'running' ? RUNNING_CALORIES_PER_STEP : WALKING_CALORIES_PER_STEP);
+    const co2Delta = distanceDeltaKm * CO2_SAVED_PER_KM_WALKED;
+
+    stepsRef.current += stepsDelta;
+    estimatedDistanceRef.current = round(estimatedDistanceRef.current + distanceDeltaKm, 3);
+    cadenceRef.current = round(cadenceEstimate, 1);
+    caloriesRef.current = round(caloriesRef.current + caloriesDelta, 2);
+    co2SavedRef.current = round(co2SavedRef.current + co2Delta, 4);
+
+    setSteps(stepsRef.current);
+    setEstimatedDistance(estimatedDistanceRef.current);
+    setCadence(cadenceRef.current);
+    setCaloriesBurned(caloriesRef.current);
+    setCo2SavedKg(co2SavedRef.current);
+    setLastStepConfidence(0.52);
+    setAverageStepConfidence((prev) => round((prev + 0.52) / 2, 3));
+    lastStepConfidenceRef.current = 0.52;
+    averageStepConfidenceRef.current = round((averageStepConfidenceRef.current + 0.52) / 2, 3);
+
+    return stepsDelta;
+  }, []);
+
+  useEffect(() => {
+    motionPermissionRef.current = motionPermission;
+  }, [motionPermission]);
+
+  useEffect(() => {
+    if (!supported.motion || typeof window === 'undefined') {
+      setMotionPermission(supported.motion ? 'prompt' : 'unsupported');
+      return;
+    }
+
+    const deviceMotionCtor = window.DeviceMotionEvent as unknown as {
+      requestPermission?: () => Promise<'granted' | 'denied'>;
+    };
+
+    if (typeof deviceMotionCtor.requestPermission !== 'function') {
+      setMotionPermission('granted');
+    }
+  }, [supported.motion]);
+
+  useEffect(() => {
+    permissionDeniedRef.current = permissionDenied;
+  }, [permissionDenied]);
+
+  const requestMotionAccess = useCallback(async () => {
+    if (!supported.motion || typeof window === 'undefined') {
+      setMotionPermission('unsupported');
+      return false;
+    }
+
+    const deviceMotionCtor = window.DeviceMotionEvent as unknown as {
+      requestPermission?: () => Promise<'granted' | 'denied'>;
+    };
+
+    if (typeof deviceMotionCtor.requestPermission === 'function') {
+      try {
+        const result = await deviceMotionCtor.requestPermission();
+        const granted = result === 'granted';
+        setMotionPermission(granted ? 'granted' : 'denied');
+        return granted;
+      } catch {
+        setMotionPermission('denied');
+        return false;
+      }
+    }
+
+    setMotionPermission('granted');
+    return true;
+  }, [supported.motion]);
+
+  const dismissBatteryAlert = useCallback(() => {
+    setBatteryAlert(null);
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) {
+        return;
+      }
+      setScreenTime((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (!userEmail || typeof window === 'undefined') return;
+
+    const interval = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) {
+        return;
+      }
+
+      void sendTimeTrigger({
+        userId: userEmail,
+        intervalMinutes: TIME_TRIGGER_INTERVAL_MS / 60_000,
+        activityDetected: Date.now() - lastMovementTsRef.current <= TIME_TRIGGER_INTERVAL_MS,
+        timestamp: new Date().toISOString(),
+      });
+    }, TIME_TRIGGER_INTERVAL_MS);
+
+    return () => window.clearInterval(interval);
+  }, [userEmail]);
+
+  useEffect(() => {
+    if (!supported.motion || typeof window === 'undefined') return;
+
+    const onMotion = (event: DeviceMotionEvent) => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+
+      const acc = event.accelerationIncludingGravity;
+      if (!acc) return;
+
+      const result = pedometerRef.current.processSample({
+        x: acc.x ?? 0,
+        y: acc.y ?? 0,
+        z: acc.z ?? 0,
+        timestamp: Date.now(),
+        intervalMs: typeof event.interval === 'number' ? event.interval : null,
+      });
+
+      if (result.step) {
+        const snapshot = syncPedometerSnapshot(true);
+        setActivity(result.step.activity);
+        if (snapshot.cadenceSpm > 0) {
+          setCadence(snapshot.cadenceSpm);
+        }
+        markMovement();
+        return;
+      }
+
+      syncDebugSnapshot(false);
+    };
+
+    window.addEventListener('devicemotion', onMotion);
+    return () => window.removeEventListener('devicemotion', onMotion);
+  }, [markMovement, supported.motion, syncDebugSnapshot, syncPedometerSnapshot]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const interval = window.setInterval(() => {
+      const snapshot = syncPedometerSnapshot(false);
+      setActivity((prev) => {
+        if (prev === 'vehicle' && Date.now() - lastMovementTsRef.current <= GPS_SAMPLE_INTERVAL_MS) {
+          return prev;
+        }
+        return snapshot.activity;
+      });
+    }, 2_000);
+
+    return () => window.clearInterval(interval);
+  }, [syncPedometerSnapshot]);
+
+  useEffect(() => {
+    if (!userEmail || typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const interval = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) {
+        return;
+      }
+
+      const stepsDeltaToReport = Math.max(0, stepsRef.current - lastReportedStepsRef.current);
+      if (stepsDeltaToReport <= 0) {
+        return;
+      }
+
+      const snapshot = pedometerRef.current.getSnapshot();
+      const activityType = snapshot.activity === 'idle' ? 'walking' : snapshot.activity;
+
+      lastReportedStepsRef.current = stepsRef.current;
+
+      void flushActivityDelta({
+        distanceMeters: 0,
+        stepsDelta: stepsDeltaToReport,
+        activeMinutes: 0,
+        activityType,
+        cadenceSpm: cadenceRef.current,
+        confidence: lastStepConfidenceRef.current,
+        avgConfidence: averageStepConfidenceRef.current,
+        timestamp: new Date().toISOString(),
+      });
+    }, STEP_DB_SYNC_INTERVAL_MS);
+
+    return () => window.clearInterval(interval);
+  }, [flushActivityDelta, userEmail]);
+
+  useEffect(() => {
+    if (!supported.geolocation || typeof navigator === 'undefined' || typeof window === 'undefined') {
+      setTrackingStatus(supported.motion ? 'active' : 'unsupported');
+      return;
+    }
+
+    let cancelled = false;
+
+    const clearSampleTimer = () => {
+      if (sampleTimerRef.current !== null) {
+        window.clearTimeout(sampleTimerRef.current);
+        sampleTimerRef.current = null;
+      }
+    };
+
+    const scheduleNextSample = (delay = GPS_SAMPLE_INTERVAL_MS) => {
+      clearSampleTimer();
+      if (cancelled) return;
+      sampleTimerRef.current = window.setTimeout(() => {
+        sampleLocation();
+      }, delay);
+    };
+
+    const sampleLocation = () => {
+      if (cancelled) return;
+
+      if (typeof document !== 'undefined' && document.hidden) {
+        setTrackingStatus('paused');
+        setActivity(pedometerRef.current.getSnapshot().activity);
+        setSpeed(0);
+        clearSampleTimer();
+        return;
+      }
+
+      setTrackingStatus('active');
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          if (cancelled) return;
+
+          setPermissionDenied(false);
+
+          const accuracy = pos.coords.accuracy ?? Number.POSITIVE_INFINITY;
+          const point = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+          const now = Date.now();
+          const motionSnapshot = syncPedometerSnapshot(false);
+          const reportedSpeed = pos.coords.speed;
+
+          if (!Number.isFinite(accuracy) || accuracy > GPS_MAX_ACCEPTABLE_ACCURACY_METERS) {
+            pedometerRef.current.updateGpsContext({ speedMps: null, accuracyMeters: accuracy, timestamp: now });
+            setLocation(point);
+            setActivity(motionSnapshot.activity);
+            setSpeed(0);
+            scheduleNextSample();
+            return;
+          }
+
+          const prev = prevLocationRef.current;
+
+          if (!prev) {
+            prevLocationRef.current = { point, at: now };
+            setLocation(point);
+            setActivity(motionSnapshot.activity);
+            setSpeed(0);
+            scheduleNextSample();
+            return;
+          }
+
+          const movedKm = distanceKm(prev.point, point);
+          const movedMeters = movedKm * 1000;
+          const elapsedSeconds = Math.max((now - prev.at) / 1000, 1);
+          const fallbackSpeedMps = movedMeters / elapsedSeconds;
+          const speedMps =
+            typeof reportedSpeed === 'number' && Number.isFinite(reportedSpeed) && reportedSpeed >= 0
+              ? reportedSpeed
+              : fallbackSpeedMps;
+
+          pedometerRef.current.updateGpsContext({
+            speedMps,
+            accuracyMeters: accuracy,
+            timestamp: now,
+          });
+
+          const nextActivity = deriveActivityFromSignals(
+            speedMps,
+            motionSnapshot.activity,
+            motionSnapshot.cadenceSpm,
+            motionSnapshot.lastStepAt,
+            now
+          );
+
+          prevLocationRef.current = { point, at: now };
+          setLocation(point);
+          setSpeed(round(speedMps * 3.6, 2));
+          setActivity(nextActivity);
+
+          if (movedMeters < GPS_MOVEMENT_THRESHOLD_METERS) {
+            if (motionSnapshot.activity !== 'idle') {
+              markMovement();
+            }
+            scheduleNextSample();
+            return;
+          }
+
+          gpsDistanceRef.current = round(gpsDistanceRef.current + movedKm, 3);
+          setGpsDistance(gpsDistanceRef.current);
+          setLastMovementDistance(round(movedMeters, 1));
+          setMeaningfulUpdates((prevCount) => prevCount + 1);
+          markMovement();
+
+          let fallbackSteps = 0;
+          if ((!supported.motion || motionPermissionRef.current !== 'granted') && (nextActivity === 'walking' || nextActivity === 'running')) {
+            fallbackSteps = applyGpsFallbackSteps(movedMeters, nextActivity, speedMps);
+          }
+
+          const fusedDistanceKm = Math.max(gpsDistanceRef.current, estimatedDistanceRef.current);
+          const distanceDeltaMeters = Math.max(0, (fusedDistanceKm - lastReportedDistanceKmRef.current) * 1000);
+          const stepsDeltaToReport = Math.max(0, stepsRef.current - lastReportedStepsRef.current);
+          const isPhysicallyActive = nextActivity === 'walking' || nextActivity === 'running';
+          const activeMinutesDelta = isPhysicallyActive ? round(elapsedSeconds / 60, 2) : 0;
+          const shouldReportActivity =
+            distanceDeltaMeters >= GPS_MOVEMENT_THRESHOLD_METERS ||
+            stepsDeltaToReport >= Math.ceil(GPS_MOVEMENT_THRESHOLD_METERS / STEP_LENGTH_WALKING_METERS) ||
+            fallbackSteps > 0;
+
+          if (isPhysicallyActive && shouldReportActivity) {
+            addSessionActiveMinutes(activeMinutesDelta);
+          }
+
+          if (userEmail && shouldReportActivity) {
+            lastReportedDistanceKmRef.current = fusedDistanceKm;
+            lastReportedStepsRef.current = stepsRef.current;
+
+            flushActivityDelta({
+              distanceMeters: round(distanceDeltaMeters, 2),
+              stepsDelta: stepsDeltaToReport,
+              activeMinutes: activeMinutesDelta,
+              activityType: nextActivity,
+              cadenceSpm: round(cadenceRef.current, 1),
+              confidence: round(lastStepConfidenceRef.current, 3),
+              avgConfidence: round(averageStepConfidenceRef.current, 3),
+              timestamp: new Date(now).toISOString(),
+            });
+          }
+
+          scheduleNextSample();
+        },
+        (error) => {
+          if (cancelled) return;
+
+          if (error.code === error.PERMISSION_DENIED) {
+            setPermissionDenied(true);
+            setTrackingStatus('permission-denied');
+            setActivity('idle');
+            setSpeed(0);
+            clearSampleTimer();
+            return;
+          }
+
+          setActivity(pedometerRef.current.getSnapshot().activity);
+          setSpeed(0);
+          scheduleNextSample();
+        },
+        {
+          enableHighAccuracy: false,
+          maximumAge: GPS_CACHE_MAX_AGE_MS,
+          timeout: GPS_TIMEOUT_MS,
+        }
+      );
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        clearSampleTimer();
+        setTrackingStatus('paused');
+        setActivity(pedometerRef.current.getSnapshot().activity);
+        setSpeed(0);
+        return;
+      }
+
+      if (permissionDeniedRef.current) {
+        setTrackingStatus('permission-denied');
+        return;
+      }
+
+      sampleLocation();
+    };
+
+    if (typeof document === 'undefined' || !document.hidden) {
+      sampleLocation();
+    } else {
+      setTrackingStatus('paused');
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      clearSampleTimer();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [
+    applyGpsFallbackSteps,
+    markMovement,
+    supported.geolocation,
+    supported.motion,
+    syncPedometerSnapshot,
+    flushActivityDelta,
+    userEmail,
+  ]);
+
+  useEffect(() => {
+    if (!supported.battery || typeof navigator === 'undefined') return;
+
+    const navWithBattery = navigator as Navigator & {
+      getBattery?: () => Promise<BatteryManagerLike>;
+    };
+
+    let batteryManager: BatteryManagerLike | null = null;
+    let initialLevel = 1;
+
+    const syncBatteryEvent = () => {
+      if (!batteryManager || !userEmail) return;
+
+      void sendBatteryTrigger({
+        userId: userEmail,
+        charging: batteryManager.charging,
+        batteryLevel: Number((batteryManager.level * 100).toFixed(2)),
+        chargerPowerWatts: CHARGER_POWER_WATTS,
+        timestamp: new Date().toISOString(),
+      });
+    };
+
+    const onLevelChange = () => {
+      if (!batteryManager) return;
+      const used = (initialLevel - batteryManager.level) * 100;
+      setBatteryUsed(used > 0 ? used : 0);
+      syncBatteryEvent();
+    };
+
+    const onChargingChange = () => {
+      if (!batteryManager) return;
+
+      const now = Date.now();
+      const wasCharging = chargingStateRef.current === true;
+
+      setCharging(batteryManager.charging);
+
+      if (chargingStateRef.current !== null && chargingStateRef.current !== batteryManager.charging) {
+        setBatteryAlert(
+          batteryManager.charging
+            ? {
+                title: 'Hurrah!!!',
+                message: 'Your device has gone into charging mode. Eco Tracker is cheering you on.',
+              }
+            : {
+                title: 'Charging Paused',
+                message: 'Your device just left charging mode. We will keep watching your battery gently.',
+              }
+        );
+      }
+
+      if (!wasCharging && batteryManager.charging) {
+        chargingStartedAtRef.current = now;
+      }
+
+      if (wasCharging && !batteryManager.charging && chargingStartedAtRef.current) {
+        const durationMinutes = Math.max((now - chargingStartedAtRef.current) / 60_000, 0);
+        const energyKwh = (CHARGER_POWER_WATTS * (durationMinutes / 60)) / 1000;
+        const chargingCarbon = energyKwh * GRID_EMISSION_FACTOR;
+
+        setChargingTimeMinutes((prev) => Number((prev + durationMinutes).toFixed(2)));
+        setChargingEnergyKwh((prev) => Number((prev + energyKwh).toFixed(4)));
+        setChargingCarbonKg((prev) => Number((prev + chargingCarbon).toFixed(4)));
+        chargingStartedAtRef.current = null;
+      }
+
+      chargingStateRef.current = batteryManager.charging;
+      syncBatteryEvent();
+    };
+
+    navWithBattery
+      .getBattery?.()
+      .then((battery) => {
+        batteryManager = battery;
+        initialLevel = battery.level;
+        setCharging(battery.charging);
+        chargingStateRef.current = battery.charging;
+        chargingStartedAtRef.current = battery.charging ? Date.now() : null;
+        battery.addEventListener('levelchange', onLevelChange);
+        battery.addEventListener('chargingchange', onChargingChange);
+        syncBatteryEvent();
+      })
+      .catch(() => {
+        // Ignore unsupported/blocked battery API errors.
+      });
+
+    return () => {
+      batteryManager?.removeEventListener('levelchange', onLevelChange);
+      batteryManager?.removeEventListener('chargingchange', onChargingChange);
+    };
+  }, [supported.battery, userEmail]);
+
+  return {
+    carbon: backendCarbonKg !== null ? backendCarbonKg : carbon,
+    batteryUsed,
+    distance,
+    gpsDistance,
+    estimatedDistance,
+    speed,
+    steps: totalSteps,
+    activeMinutes: totalActiveMinutes,
+    location,
+    screenTime,
+    permissionDenied,
+    motionPermission,
+    activity,
+    movementMode,
+    movementLabel,
+    trackingStatus,
+    meaningfulUpdates,
+    lastMovementDistance,
+    samplingIntervalSeconds: GPS_SAMPLE_INTERVAL_MS / 1000,
+    movementThresholdMeters: GPS_MOVEMENT_THRESHOLD_METERS,
+    cadence,
+    caloriesBurned,
+    co2SavedKg,
+    lastStepConfidence,
+    averageStepConfidence,
+    debugSignals,
+    recentSteps,
+    charging,
+    chargingTimeMinutes,
+    chargingEnergyKwh,
+    chargingCarbonKg,
+    batteryAlert,
+    backendScore,
+    backendCarbonKg,
+    supported,
+    requestMotionAccess,
+    dismissBatteryAlert,
+  };
+}

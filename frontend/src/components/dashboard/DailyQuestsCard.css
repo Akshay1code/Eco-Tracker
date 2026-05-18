@@ -1,0 +1,120 @@
+.daily-quests-card {
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.daily-quests-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.streak-badge {
+  background: var(--orange-100, #ffedd5);
+  color: var(--orange-700, #c2410c);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.quests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quest-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--gray-200, #e5e7eb);
+  border-radius: 12px;
+  background: var(--gray-50, #f9fafb);
+  transition: all 0.2s ease;
+}
+
+.quest-item:hover {
+  border-color: var(--forest, #065f46);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.quest-item.completed {
+  background: var(--green-50, #f0fdf4);
+  border-color: var(--green-200, #bbf7d0);
+}
+
+.quest-info {
+  flex: 1;
+}
+
+.quest-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.quest-title-row h4 {
+  margin: 0;
+  color: var(--gray-800, #1f2937);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.quest-difficulty {
+  color: white;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.quest-desc {
+  margin: 0 0 8px 0;
+  color: var(--gray-600, #4b5563);
+  font-size: 0.9rem;
+}
+
+.quest-rewards {
+  display: flex;
+  gap: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.reward-xp {
+  color: var(--yellow-600, #ca8a04);
+}
+
+.reward-co2 {
+  color: var(--forest, #065f46);
+}
+
+.quest-action {
+  margin-left: 16px;
+}
+
+.quest-btn {
+  background: var(--forest, #065f46);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.quest-btn:hover:not(:disabled) {
+  background: var(--forest-dark, #047857);
+}
+
+.quest-btn.done {
+  background: var(--gray-300, #d1d5db);
+  color: var(--gray-500, #6b7280);
+  cursor: default;
+}
