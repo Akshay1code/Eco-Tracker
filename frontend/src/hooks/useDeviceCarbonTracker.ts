@@ -34,6 +34,7 @@ interface CachedDailyTotals {
   steps: number;
   activeMinutes: number;
   distanceKm: number;
+  caloriesBurned: number;
 }
 
 export interface DeviceCarbonData {
@@ -152,6 +153,7 @@ function readCachedDailyTotals(userEmail: string | null, dateKey: string): Cache
       steps: Math.max(0, Number(parsed.steps || 0)),
       activeMinutes: Math.max(0, round(Number(parsed.activeMinutes || 0), 2)),
       distanceKm: Math.max(0, Number(parsed.distanceKm || 0)),
+      caloriesBurned: Math.max(0, round(Number(parsed.caloriesBurned || 0), 2)),
     };
   } catch {
     return null;
@@ -305,6 +307,7 @@ export default function useDeviceCarbonTracker(
     steps: 0,
     activeMinutes: 0,
     distanceKm: 0,
+    caloriesBurned: 0,
   });
 
   const pedometerRef = useRef(createRealtimePedometer());
@@ -412,6 +415,10 @@ export default function useDeviceCarbonTracker(
     () => persistedBaseline.activeMinutes + activeMinutes,
     [activeMinutes, persistedBaseline.activeMinutes]
   );
+  const totalCaloriesBurned = useMemo(
+    () => round(persistedBaseline.caloriesBurned + caloriesBurned, 2),
+    [caloriesBurned, persistedBaseline.caloriesBurned]
+  );
   const distance = useMemo(
     () => round(persistedBaseline.distanceKm + sessionDistance, 3),
     [persistedBaseline.distanceKm, sessionDistance]
@@ -437,6 +444,7 @@ export default function useDeviceCarbonTracker(
       steps: Math.max(recordSteps, cached?.steps || 0),
       activeMinutes: Math.max(recordActiveMinutes, cached?.activeMinutes || 0),
       distanceKm: Math.max(recordDistanceKm, cached?.distanceKm || 0),
+      caloriesBurned: Math.max(0, cached?.caloriesBurned || 0),
     };
   }, [userEmail]);
 
@@ -524,7 +532,8 @@ export default function useDeviceCarbonTracker(
           prev.date === nextBaseline.date &&
           prev.steps === nextBaseline.steps &&
           prev.activeMinutes === nextBaseline.activeMinutes &&
-          prev.distanceKm === nextBaseline.distanceKm
+          prev.distanceKm === nextBaseline.distanceKm &&
+          prev.caloriesBurned === nextBaseline.caloriesBurned
         ) {
           return prev;
         }
@@ -545,8 +554,9 @@ export default function useDeviceCarbonTracker(
       steps: totalSteps,
       activeMinutes: totalActiveMinutes,
       distanceKm: distance,
+      caloriesBurned: totalCaloriesBurned,
     });
-  }, [distance, persistedBaseline.date, totalActiveMinutes, totalSteps, userEmail]);
+  }, [distance, persistedBaseline.date, totalActiveMinutes, totalCaloriesBurned, totalSteps, userEmail]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -1128,7 +1138,7 @@ export default function useDeviceCarbonTracker(
     samplingIntervalSeconds: GPS_SAMPLE_INTERVAL_MS / 1000,
     movementThresholdMeters: GPS_MOVEMENT_THRESHOLD_METERS,
     cadence,
-    caloriesBurned,
+    caloriesBurned: totalCaloriesBurned,
     co2SavedKg,
     lastStepConfidence,
     averageStepConfidence,

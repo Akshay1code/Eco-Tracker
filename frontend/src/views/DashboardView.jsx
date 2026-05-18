@@ -19,6 +19,7 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
   const [vehicleModalShown, setVehicleModalShown] = useState(false);
   const [pendingVehicleData, setPendingVehicleData] = useState(null);
   const [showElectricityModal, setShowElectricityModal] = useState(false);
+  const [optimisticQuestImpact, setOptimisticQuestImpact] = useState(null);
 
   const { users: leaderboardUsers, isLoading: isLeaderboardLoading, error: leaderboardError } = useLeaderboard(5);
   const topFive = leaderboardUsers.slice(0, 5);
@@ -29,6 +30,23 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
   } = useDailyActivityRecords(storedEmail, 30_000); // 30 s is sufficient — triggers keep it fresh
   const { user: userProfile, refetch: refetchProfile } = useUserProfile(storedEmail);
   const tracker = useDeviceCarbonTracker(storedEmail, todayRecord);
+
+  useEffect(() => {
+    if (!optimisticQuestImpact) return;
+
+    const profileScore = Number(userProfile?.carbonScore);
+    const todayNetCarbon = Number(todayRecord?.net_carbon_impact ?? todayRecord?.carbon_emission);
+    const profileCaughtUp =
+      Number.isFinite(profileScore) &&
+      Math.abs(profileScore - optimisticQuestImpact.footprintScore) < 0.0001;
+    const recordCaughtUp =
+      Number.isFinite(todayNetCarbon) &&
+      Math.abs(todayNetCarbon - optimisticQuestImpact.carbon) < 0.0001;
+
+    if (profileCaughtUp || recordCaughtUp) {
+      setOptimisticQuestImpact(null);
+    }
+  }, [optimisticQuestImpact, todayRecord, userProfile]);
 
   // Write live carbon to localStorage so the sidebar in App.jsx can read it without prop drilling
   useEffect(() => {
@@ -53,7 +71,10 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
 
   // tracker.carbon is already set to backendCarbonKg when available (see useDeviceCarbonTracker).
   // todayRecord from the daily poll gives the same source-of-truth but may be slightly stale.
-  const liveCarbon = tracker.carbon;
+  const liveCarbon =
+    typeof optimisticQuestImpact?.carbon === 'number'
+      ? optimisticQuestImpact.carbon
+      : tracker.carbon;
 
   useEffect(() => {
     // Detect vehicle movement and trigger modal once per session
@@ -93,9 +114,11 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
     return () => clearInterval(interval);
   }, [storedEmail]);
 
-  const footprintScore = typeof userProfile?.carbonScore === 'number'
-    ? userProfile.carbonScore
-    : Math.min(10, (liveCarbon / 2.0) * 10);
+  const footprintScore = typeof optimisticQuestImpact?.footprintScore === 'number'
+    ? optimisticQuestImpact.footprintScore
+    : typeof userProfile?.carbonScore === 'number'
+      ? userProfile.carbonScore
+      : Math.min(10, (liveCarbon / 2.0) * 10);
 
   const dashboardData = {
     ...tracker,
@@ -195,6 +218,11 @@ function DashboardView({ onCalClick, onUserClick, onLogout, activeTab = 'dashboa
         <DailyQuestsCard 
           userId={storedEmail} 
           onQuestCompleted={(data) => {
+            setOptimisticQuestImpact({
+              carbon: Number(data.new_net_carbon_impact ?? tracker.carbon ?? 0),
+              footprintScore: Number(data.new_carbon_score ?? userProfile?.carbonScore ?? 0),
+            });
+
             // Optimistically update today's net carbon locally based on the quest impact.
             const todayKey = new Date().toISOString().slice(0, 10);
             try {

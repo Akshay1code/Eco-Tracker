@@ -71,6 +71,23 @@ function getNumericValue(value) {
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
+function getCurrentDayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function parseDateKey(value) {
+  if (typeof value === 'string') {
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (match) {
+      const [, year, month, day] = match;
+      return new Date(Number(year), Number(month) - 1, Number(day), 12);
+    }
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
 function resolveLiveMetric(fitValue, trackerValue) {
   const normalizedFitValue = getNumericValue(fitValue);
   const normalizedTrackerValue = getNumericValue(trackerValue);
@@ -144,6 +161,75 @@ export default function ActivityView({ onLogout, googleFit }) {
   const liveTransportCarbon = getNumericValue(todayRecord?.transport_carbon_emission);
   const liveDeviceCarbon = getNumericValue(todayRecord?.device_carbon_emission);
   const liveChargingCarbon = getNumericValue(todayRecord?.charging_carbon_emission);
+  const recordsWithLiveToday = useMemo(() => {
+    const todayKey = getCurrentDayKey();
+    const hasLiveTodayData =
+      liveSteps > 0 ||
+      liveActiveMin > 0 ||
+      liveCalories > 0 ||
+      liveDistance > 0 ||
+      liveNetCarbonImpact > 0 ||
+      liveCarbonSaved > 0;
+
+    if (!hasLiveTodayData) {
+      return records;
+    }
+
+    let foundToday = false;
+    const mergedRecords = records.map((record) => {
+      if (record.date !== todayKey) {
+        return record;
+      }
+
+      foundToday = true;
+      const currentNetImpact = getNumericValue(record.net_carbon_impact ?? record.carbon_emission);
+
+      return {
+        ...record,
+        steps: Math.max(getNumericValue(record.steps), liveSteps),
+        active_time: Math.max(getNumericValue(record.active_time), liveActiveMin),
+        activity_distance: Math.max(getNumericValue(record.activity_distance), liveDistance),
+        net_carbon_impact: Math.max(currentNetImpact, liveNetCarbonImpact),
+        carbon_emission: Math.max(currentNetImpact, liveNetCarbonImpact),
+        carbon_saved: Math.max(getNumericValue(record.carbon_saved), liveCarbonSaved),
+        transport_carbon_emission: Math.max(getNumericValue(record.transport_carbon_emission), liveTransportCarbon),
+        device_carbon_emission: Math.max(getNumericValue(record.device_carbon_emission), liveDeviceCarbon),
+        charging_carbon_emission: Math.max(getNumericValue(record.charging_carbon_emission), liveChargingCarbon),
+      };
+    });
+
+    if (foundToday) {
+      return mergedRecords;
+    }
+
+    return [
+      {
+        date: todayKey,
+        steps: liveSteps,
+        active_time: liveActiveMin,
+        activity_distance: liveDistance,
+        net_carbon_impact: liveNetCarbonImpact,
+        carbon_emission: liveNetCarbonImpact,
+        carbon_saved: liveCarbonSaved,
+        transport_carbon_emission: liveTransportCarbon,
+        device_carbon_emission: liveDeviceCarbon,
+        charging_carbon_emission: liveChargingCarbon,
+      },
+      ...records,
+    ];
+  }, [
+    liveActiveMin,
+    liveCarbonSaved,
+    liveChargingCarbon,
+    liveCalories,
+    liveDeviceCarbon,
+    liveDistance,
+    liveNetCarbonImpact,
+    liveSteps,
+    liveTransportCarbon,
+    records,
+  ]);
+
   const LIVE_STATS_MAP = useMemo(
     () => [
       {
@@ -206,14 +292,14 @@ export default function ActivityView({ onLogout, googleFit }) {
   );
 
   const weeklyData = useMemo(() => {
-    const last7 = [...records].reverse().slice(0, 7).reverse();
+    const last7 = [...recordsWithLiveToday].reverse().slice(0, 7).reverse();
     return last7.map((record) => ({
-      day: new Date(record.date).toLocaleDateString('en-US', { weekday: 'short' }),
+      day: parseDateKey(record.date).toLocaleDateString('en-US', { weekday: 'short' }),
       co2: getNumericValue(record.net_carbon_impact ?? record.carbon_emission),
       steps: getNumericValue(record.steps),
       active: getNumericValue(record.active_time),
     }));
-  }, [records]);
+  }, [recordsWithLiveToday]);
 
   const activityLogData = useMemo(() => {
     const logs = todayRecord?.activity_logs || [];
@@ -299,8 +385,8 @@ export default function ActivityView({ onLogout, googleFit }) {
 
   const monthlySummary = useMemo(() => {
     const now = new Date();
-    const monthRecords = records.filter((record) => {
-      const date = new Date(record.date);
+    const monthRecords = recordsWithLiveToday.filter((record) => {
+      const date = parseDateKey(record.date);
       return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
     });
 
@@ -334,7 +420,7 @@ export default function ActivityView({ onLogout, googleFit }) {
       averageImpact,
       bestDay,
     };
-  }, [records]);
+  }, [recordsWithLiveToday]);
 
   const chartDataKey = chartMode === 'CO2' ? 'co2' : chartMode.toLowerCase();
 
@@ -585,7 +671,7 @@ export default function ActivityView({ onLogout, googleFit }) {
           </div>
           <div className="monthly-stat-block">
             <div className="monthly-stat-label">Total Steps</div>
-            <div className="monthly-stat-value">{monthlySummary.totalSteps}</div>
+            <div className="monthly-stat-value">{monthlySummary.totalSteps.toLocaleString()}</div>
             <div className="monthly-stat-sub">this month</div>
             <MdDirectionsWalk className="monthly-stat-icon" />
           </div>
@@ -596,7 +682,7 @@ export default function ActivityView({ onLogout, googleFit }) {
             </div>
             <div className="monthly-stat-sub">
               {monthlySummary.bestDay
-                ? new Date(monthlySummary.bestDay.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                ? parseDateKey(monthlySummary.bestDay.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                 : 'no data yet'}
             </div>
             <MdEmojiEvents className="monthly-stat-icon" />
