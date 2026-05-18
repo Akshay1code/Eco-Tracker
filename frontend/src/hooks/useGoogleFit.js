@@ -180,7 +180,8 @@ export default function useGoogleFit(userEmail) {
       setFitError(null);
 
       try {
-        await initGoogleAuth();
+        // Google Auth should already be initialized in the mount effect
+        // Call requestFitToken directly to keep it in the user interaction chain
         const token = await requestFitToken(prompt);
 
         if (!token) {
@@ -215,6 +216,15 @@ export default function useGoogleFit(userEmail) {
     },
     [configured, performSync, startSyncInterval]
   );
+
+  // ─── Initialize Google Auth on mount ───────────────────────────────────────
+  useEffect(() => {
+    if (configured) {
+      initGoogleAuth().catch((err) => {
+        console.error('Failed to initialize Google Auth:', err);
+      });
+    }
+  }, [configured]);
 
   // ─── Re-connect from sessionStorage on mount & Window Visibility ─────────
   useEffect(() => {
