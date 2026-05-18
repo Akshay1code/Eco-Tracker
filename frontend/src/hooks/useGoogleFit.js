@@ -78,7 +78,6 @@ export default function useGoogleFit(userEmail) {
   const syncIntervalRef = useRef(null);
   const isMountedRef = useRef(true);
   const prevSnapshotRef = useRef(null);
-  const autoConnectUserRef = useRef('');
 
   // When Google Fit snapshot changes (e.g. steps changed), store in db via trigger
   useEffect(() => {
@@ -306,19 +305,6 @@ export default function useGoogleFit(userEmail) {
       if (motionTimeout) clearTimeout(motionTimeout);
     };
   }, [performSync]);
-
-  useEffect(() => {
-    if (!configured || !userEmail || fitConnected) {
-      return;
-    }
-
-    if (autoConnectUserRef.current === userEmail) {
-      return;
-    }
-
-    autoConnectUserRef.current = userEmail;
-    void beginGoogleFitConnection('', true);
-  }, [beginGoogleFitConnection, configured, fitConnected, userEmail]);
 
   // ─── Public API ────────────────────────────────────────────────────────────
 
