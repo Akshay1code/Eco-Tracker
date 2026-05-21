@@ -1,8 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-
-// We'll mock out the services and test the core formulas here.
-// In reality, these would be exported from a math/utils module.
+import {
+  ACTIVE_TRAVEL_SAVED_KG_PER_KM,
+  INDIA_GRID_EMISSION_FACTOR,
+  calculateTransportCarbonKg,
+  getTransportEmissionProfile,
+  resolveTransportModeKey,
+} from '../constants.js';
 
 function calculateQuestCarbonReduction(difficulty) {
   switch (difficulty) {
@@ -23,22 +27,12 @@ function calculateQuestXp(difficulty) {
 }
 
 function calculateMonthlyElectricityCarbon(unitsKwh) {
-  return unitsKwh * 0.725;
+  return Number((unitsKwh * INDIA_GRID_EMISSION_FACTOR).toFixed(6));
 }
 
 function calculateDailyElectricityCarbon(unitsKwh, daysInMonth) {
   const monthly = calculateMonthlyElectricityCarbon(unitsKwh);
-  return monthly / daysInMonth;
-}
-
-function calculateTransportCarbon(distanceKm, transportType) {
-  switch (transportType) {
-    case 'car': return distanceKm * 0.192;
-    case 'bus': return distanceKm * 0.105;
-    case 'train': return distanceKm * 0.041;
-    case 'bike': return 0;
-    default: return 0;
-  }
+  return Number((monthly / daysInMonth).toFixed(6));
 }
 
 test('Carbon Engine Formulas', async (t) => {
@@ -57,18 +51,31 @@ test('Carbon Engine Formulas', async (t) => {
   });
 
   await t.test('Electricity Carbon Calculation', () => {
-    // 100 kWh -> 100 * 0.725 = 72.5 kg CO2
-    assert.equal(calculateMonthlyElectricityCarbon(100), 72.5);
-    
-    // Daily contribution for 30 days
-    const daily = calculateDailyElectricityCarbon(300, 30); // 300 * 0.725 = 217.5 / 30 = 7.25
-    assert.equal(daily, 7.25);
+    assert.equal(calculateMonthlyElectricityCarbon(100), 71);
+    assert.equal(calculateDailyElectricityCarbon(300, 30), 7.1);
+  });
+
+  await t.test('Transport Mode Resolution', () => {
+    assert.equal(resolveTransportModeKey('car'), 'car_petrol');
+    assert.equal(resolveTransportModeKey('Diesel Car'), 'car_diesel');
+    assert.equal(resolveTransportModeKey('bike'), 'walking_cycling');
+    assert.equal(resolveTransportModeKey('auto'), 'auto_rickshaw');
   });
 
   await t.test('Transport Carbon Calculation', () => {
-    assert.equal(calculateTransportCarbon(10, 'car').toFixed(2), '1.92');
-    assert.equal(calculateTransportCarbon(10, 'bus').toFixed(2), '1.05');
-    assert.equal(calculateTransportCarbon(10, 'train').toFixed(2), '0.41');
-    assert.equal(calculateTransportCarbon(10, 'bike').toFixed(2), '0.00');
+    assert.equal(calculateTransportCarbonKg(10, 'two_wheeler_petrol').toFixed(2), '0.40');
+    assert.equal(calculateTransportCarbonKg(10, 'car_petrol').toFixed(2), '1.40');
+    assert.equal(calculateTransportCarbonKg(10, 'car_diesel').toFixed(2), '1.55');
+    assert.equal(calculateTransportCarbonKg(10, 'metro_train_electric').toFixed(2), '0.20');
+    assert.equal(calculateTransportCarbonKg(10, 'bus_diesel_city').toFixed(2), '0.50');
+    assert.equal(calculateTransportCarbonKg(10, 'walking_cycling').toFixed(2), '0.00');
+    assert.equal(calculateTransportCarbonKg(10, 'auto_rickshaw').toFixed(2), '0.75');
+  });
+
+  await t.test('Transport Metadata', () => {
+    const profile = getTransportEmissionProfile('metro');
+    assert.equal(profile.label, 'Metro / Train (Electric)');
+    assert.equal(profile.factorKgCO2e, 0.02);
+    assert.equal(ACTIVE_TRAVEL_SAVED_KG_PER_KM, 0.14);
   });
 });

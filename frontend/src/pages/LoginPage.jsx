@@ -2,17 +2,6 @@ import { useEffect, useState } from 'react';
 import AuthLayout from '../components/auth/AuthLayout.jsx';
 import { loginUser as loginUserRequest } from '../lib/authApi.js';
 
-function GoogleLogo() {
-  return (
-    <svg viewBox="0 0 24 24" className="signin-social-icon" aria-hidden="true">
-      <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-.9 2.4-2 3.1l3.2 2.5c1.9-1.8 3-4.4 3-7.5 0-.7-.1-1.4-.2-2H12z" />
-      <path fill="#34A853" d="M12 22c2.7 0 5-1 6.7-2.7l-3.2-2.5c-.9.6-2 .9-3.5.9-2.7 0-4.9-1.8-5.7-4.3l-3.4 2.6C4.6 19.5 8 22 12 22z" />
-      <path fill="#4A90E2" d="M6.3 13.4c-.2-.6-.3-1.2-.3-1.9s.1-1.3.3-1.9L2.9 7C2.3 8.2 2 9.6 2 11.1s.3 2.9.9 4.1l3.4-1.8z" />
-      <path fill="#FBBC05" d="M12 5.4c1.5 0 2.9.5 3.9 1.5l2.9-2.9C17 2.4 14.7 1.4 12 1.4 8 1.4 4.6 3.9 2.9 7l3.4 2.6c.8-2.5 3-4.2 5.7-4.2z" />
-    </svg>
-  );
-}
-
 function LeafPrefixIcon() {
   return (
     <svg viewBox="0 0 24 24" className="signin-field-icon" aria-hidden="true">
@@ -35,7 +24,6 @@ function LoginPage({ onSwitchToSignup, onNavigate }) {
   const [touched, setTouched] = useState({});
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [googleState, setGoogleState] = useState('default');
   const [showPassword, setShowPassword] = useState(false);
   const [leafPulse, setLeafPulse] = useState(false);
 
@@ -44,12 +32,6 @@ function LoginPage({ onSwitchToSignup, onNavigate }) {
     const timeout = window.setTimeout(() => setLeafPulse(false), 220);
     return () => window.clearTimeout(timeout);
   }, [leafPulse]);
-
-  useEffect(() => {
-    if (googleState !== 'rolling') return;
-    const timeout = window.setTimeout(() => setGoogleState('connected'), 620);
-    return () => window.clearTimeout(timeout);
-  }, [googleState]);
 
   const goTo = (path) => {
     if (onNavigate) {
@@ -79,11 +61,6 @@ function LoginPage({ onSwitchToSignup, onNavigate }) {
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setFormError('');
-  };
-
-  const handleGoogleConnect = () => {
-    if (googleState !== 'default') return;
-    setGoogleState('rolling');
   };
 
   const handleTogglePassword = () => {
@@ -132,27 +109,6 @@ function LoginPage({ onSwitchToSignup, onNavigate }) {
           <h2>Welcome back</h2>
           <p>Sign in to continue your eco journey.</p>
         </header>
-
-        <section className="signin-social-stack" aria-label="Social sign in">
-          <button
-            type="button"
-            className={`signin-social-btn ${googleState === 'connected' ? 'is-connected' : ''}`}
-            onClick={handleGoogleConnect}
-            disabled={googleState !== 'default'}
-            aria-pressed={googleState !== 'default'}
-          >
-            <span className={`signin-social-icon-wrap ${googleState === 'rolling' ? 'is-rolling' : ''}`}>
-              <GoogleLogo />
-            </span>
-            <span className={`signin-social-label ${googleState === 'rolling' ? 'is-rolling' : ''}`}>Continue with Google</span>
-          </button>
-        </section>
-
-        <div className="signin-divider">
-          <hr />
-          <span>or continue with email</span>
-          <hr />
-        </div>
 
         <form onSubmit={handleSubmit} className="signin-form">
           <div className="signin-field">

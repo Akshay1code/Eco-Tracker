@@ -1,82 +1,129 @@
 import React, { useState } from 'react';
 import Modal from '../shared/Modal.jsx';
-import { MdDirectionsBus, MdDirectionsCar, MdTrain, MdPedalBike, MdClose } from 'react-icons/md';
+import { MdClose, MdDirectionsBike, MdDirectionsBus, MdDirectionsCar, MdPedalBike, MdTrain } from 'react-icons/md';
 import { submitTransportCarbon } from '../../lib/userApi.js';
+
+const TRANSPORT_OPTIONS = [
+  {
+    value: 'two_wheeler_petrol',
+    label: 'Two-Wheeler',
+    Icon: MdDirectionsBike,
+    factorKgPerKm: 0.04,
+    styles: { background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412' },
+  },
+  {
+    value: 'car_petrol',
+    label: 'Petrol Car',
+    Icon: MdDirectionsCar,
+    factorKgPerKm: 0.14,
+    styles: { background: '#fef2f2', border: '1px solid #fca5a5', color: '#991b1b' },
+  },
+  {
+    value: 'car_diesel',
+    label: 'Diesel Car',
+    Icon: MdDirectionsCar,
+    factorKgPerKm: 0.155,
+    styles: { background: '#fefce8', border: '1px solid #fde047', color: '#854d0e' },
+  },
+  {
+    value: 'metro_train_electric',
+    label: 'Metro / Train',
+    Icon: MdTrain,
+    factorKgPerKm: 0.02,
+    styles: { background: '#e0f2fe', border: '1px solid #7dd3fc', color: '#075985' },
+  },
+  {
+    value: 'bus_diesel_city',
+    label: 'Bus',
+    Icon: MdDirectionsBus,
+    factorKgPerKm: 0.05,
+    styles: { background: '#f0fdf4', border: '1px solid #86efac', color: '#166534' },
+  },
+  {
+    value: 'walking_cycling',
+    label: 'Walking / Cycling',
+    Icon: MdPedalBike,
+    factorKgPerKm: 0,
+    styles: { background: '#f5f3ff', border: '1px solid #c4b5fd', color: '#5b21b6' },
+  },
+  {
+    value: 'auto_rickshaw',
+    label: 'Auto-Rickshaw',
+    Icon: MdDirectionsCar,
+    factorKgPerKm: 0.075,
+    styles: { background: '#ecfeff', border: '1px solid #67e8f9', color: '#155e75' },
+  },
+];
 
 function VehicleDetectionModal({ userId, mode, speedKmh, onClose, onConfirm }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSelect = async (transportType) => {
-    setIsSubmitting(true);
-    let carbonKg = 0;
-    
-    // Very rough heuristic for prototype
-    const assumedDistanceKm = Math.max(1, (speedKmh / 60) * 10); // e.g. 10 mins driving at that speed
-    
-    switch (transportType) {
-      case 'car': carbonKg = assumedDistanceKm * 0.171; break; // ARAI standard petrol car
-      case 'bus': carbonKg = assumedDistanceKm * 0.105; break;
-      case 'train': carbonKg = assumedDistanceKm * 0.041; break;
-      case 'bike': carbonKg = 0; break;
-    }
+  const assumedDistanceKm = Math.max(1, (speedKmh / 60) * 10);
 
+  const handleSelect = async (transportType) => {
+    const selectedOption = TRANSPORT_OPTIONS.find((option) => option.value === transportType);
+    const fallbackCarbonKg = Number((assumedDistanceKm * (selectedOption?.factorKgPerKm || 0)).toFixed(6));
+
+    setIsSubmitting(true);
     try {
-      await submitTransportCarbon(userId, carbonKg, transportType);
-      onConfirm({ transportType, carbonKg });
+      const response = await submitTransportCarbon(userId, {
+        transportType,
+        distanceKm: assumedDistanceKm,
+      });
+      const carbonKg = Number(response?.data?.carbonKg ?? fallbackCarbonKg);
+      onConfirm({ transportType, carbonKg, distanceKm: assumedDistanceKm });
     } catch (err) {
       console.error(err);
-      onConfirm({ transportType, carbonKg }); // Optimistic success
+      onConfirm({ transportType, carbonKg: fallbackCarbonKg, distanceKm: assumedDistanceKm });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <Modal onClose={onClose} maxWidth={400}>
+    <Modal onClose={onClose} maxWidth={440}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
         <div>
           <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#1f2937' }}>Movement Detected</h2>
           <p style={{ margin: '4px 0 0', color: '#6b7280', fontSize: '0.9rem' }}>
-            We noticed you're moving at ~{Math.round(speedKmh)} km/h. How are you traveling?
+            We noticed you&apos;re moving at ~{Math.round(speedKmh)} km/h. How are you traveling?
           </p>
+          {mode ? (
+            <p style={{ margin: '8px 0 0', color: '#9ca3af', fontSize: '0.8rem' }}>
+              Detected mode: {String(mode).replace(/_/g, ' ')}
+            </p>
+          ) : null}
         </div>
         <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af' }}>
           <MdClose size={24} />
         </button>
       </header>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
-        <button 
-          onClick={() => handleSelect('car')} disabled={isSubmitting}
-          style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '12px', color: '#991b1b', cursor: 'pointer', fontWeight: 600 }}
-        >
-          <MdDirectionsCar size={24} /> Private Car
-        </button>
-
-        <button 
-          onClick={() => handleSelect('bus')} disabled={isSubmitting}
-          style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '12px', color: '#166534', cursor: 'pointer', fontWeight: 600 }}
-        >
-          <MdDirectionsBus size={24} /> Public Bus
-        </button>
-
-        <button 
-          onClick={() => handleSelect('train')} disabled={isSubmitting}
-          style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', background: '#e0f2fe', border: '1px solid #7dd3fc', borderRadius: '12px', color: '#075985', cursor: 'pointer', fontWeight: 600 }}
-        >
-          <MdTrain size={24} /> Train / Metro
-        </button>
-
-        <button 
-          onClick={() => handleSelect('bike')} disabled={isSubmitting}
-          style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', background: '#fdf4ff', border: '1px solid #f9a8d4', borderRadius: '12px', color: '#86198f', cursor: 'pointer', fontWeight: 600 }}
-        >
-          <MdPedalBike size={24} /> Cycling
-        </button>
+      <div style={{ display: 'grid', gap: '12px', marginTop: '20px' }}>
+        {TRANSPORT_OPTIONS.map(({ value, label, Icon, styles }) => (
+          <button
+            key={value}
+            onClick={() => handleSelect(value)}
+            disabled={isSubmitting}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '16px',
+              borderRadius: '12px',
+              cursor: isSubmitting ? 'wait' : 'pointer',
+              fontWeight: 600,
+              ...styles,
+            }}
+          >
+            <Icon size={24} />
+            {label}
+          </button>
+        ))}
       </div>
 
       <p style={{ marginTop: '20px', fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center' }}>
-        We use this to estimate your carbon footprint accurately.
+        Transport emissions are estimated from your India-specific dataset. Electricity and phone charging are handled separately.
       </p>
     </Modal>
   );

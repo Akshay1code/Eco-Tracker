@@ -64,6 +64,8 @@ function sanitizeUserDocument(document) {
     return null;
   }
 
+  const progression = buildProgressionSnapshot(document.score);
+
   return {
     id: document._id instanceof ObjectId ? document._id.toString() : String(document._id || ''),
     name: document.name,
@@ -75,11 +77,15 @@ function sanitizeUserDocument(document) {
     bio: document.bio || '',
     rank: document.rank || 'guardian',
     score: typeof document.score === 'number' ? document.score : WELCOME_XP,
-    level: typeof document.level === 'number' ? document.level : buildProgressionSnapshot(document.score).level,
+    totalXp: progression.totalXp,
+    currentXp: progression.currentXp,
+    xpRequiredForLevel: progression.xpRequiredForLevel,
+    xpToNextLevel: progression.xpToNextLevel,
+    level: typeof document.level === 'number' ? document.level : progression.level,
     levelProgressPct:
       typeof document.levelProgressPct === 'number'
         ? document.levelProgressPct
-        : buildProgressionSnapshot(document.score).levelProgressPct,
+        : progression.levelProgressPct,
     badges: Array.isArray(document.badges) ? document.badges : [],
     goals: Array.isArray(document.goals) ? document.goals : [],
     journal: Array.isArray(document.journal) ? document.journal : [],

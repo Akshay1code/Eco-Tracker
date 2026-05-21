@@ -1200,7 +1200,8 @@ label > span {
 
   .app-main {
     margin-left: 0;
-    padding-top: 72px;
+    padding-top: 0;
+    padding-bottom: 104px;
   }
 
   .three-col,
@@ -1327,4 +1328,3 @@ label > span {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
-

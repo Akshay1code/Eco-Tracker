@@ -26,7 +26,7 @@ function LeaderboardRow({ user, onClick }) {
         {user.score?.toFixed(2)} kg
       </div>
       <div className="xp-cell" style={{ fontSize: '0.8rem' }}>
-        {user.xp} XP
+        Level {user.level ?? 1}
       </div>
       <div className="chevron-cell">
         <MdChevronRight />

@@ -114,7 +114,7 @@ const DEFAULT_OPTIONS: PedometerOptions = {
   maxGpsContextAgeMs: 15_000,
   baseStepLengthMeters: 0.76,
   runningStepLengthMeters: 1.02,
-  co2SavedPerKmKg: 0.192,
+  co2SavedPerKmKg: 0.14,
   walkingCaloriesPerStep: 0.042,
   runningCaloriesPerStep: 0.065,
 };

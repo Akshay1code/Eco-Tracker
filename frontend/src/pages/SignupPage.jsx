@@ -99,17 +99,6 @@ function LeafToggleIcon() {
   );
 }
 
-function GoogleLogo() {
-  return (
-    <svg viewBox="0 0 24 24" className="signin-social-icon" aria-hidden="true">
-      <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-.9 2.4-2 3.1l3.2 2.5c1.9-1.8 3-4.4 3-7.5 0-.7-.1-1.4-.2-2H12z" />
-      <path fill="#34A853" d="M12 22c2.7 0 5-1 6.7-2.7l-3.2-2.5c-.9.6-2 .9-3.5.9-2.7 0-4.9-1.8-5.7-4.3l-3.4 2.6C4.6 19.5 8 22 12 22z" />
-      <path fill="#4A90E2" d="M6.3 13.4c-.2-.6-.3-1.2-.3-1.9s.1-1.3.3-1.9L2.9 7C2.3 8.2 2 9.6 2 11.1s.3 2.9.9 4.1l3.4-1.8z" />
-      <path fill="#FBBC05" d="M12 5.4c1.5 0 2.9.5 3.9 1.5l2.9-2.9C17 2.4 14.7 1.4 12 1.4 8 1.4 4.6 3.9 2.9 7l3.4 2.6c.8-2.5 3-4.2 5.7-4.2z" />
-    </svg>
-  );
-}
-
 function StepCard({
   step,
   form,
@@ -118,11 +107,9 @@ function StepCard({
   today,
   showPassword,
   showConfirmPassword,
-  googleState,
   onChange,
   onBlur,
   onTogglePassword,
-  onGoogleConnect,
 }) {
   if (step.id === 'done') {
     return (
@@ -246,27 +233,6 @@ function StepCard({
 
         {step.id === 'credentials' ? (
           <div className="eco-signup-credentials">
-            <div className="eco-signup-social-stack" aria-label="Social sign up">
-              <button
-                type="button"
-                className={`signin-social-btn eco-signup-social-btn ${googleState === 'connected' ? 'is-connected' : ''}`}
-                onClick={onGoogleConnect}
-                disabled={googleState !== 'default'}
-                aria-pressed={googleState !== 'default'}
-              >
-                <span className={`signin-social-icon-wrap ${googleState === 'rolling' ? 'is-rolling' : ''}`}>
-                  <GoogleLogo />
-                </span>
-                <span className={`signin-social-label ${googleState === 'rolling' ? 'is-rolling' : ''}`}>
-                  {googleState === 'connected' ? 'Google connected' : 'Continue with Google'}
-                </span>
-              </button>
-
-              <div className="eco-signup-divider">
-                <span>or continue with email</span>
-              </div>
-            </div>
-
             <div className="eco-signup-field">
               <label htmlFor="signup-email">Email Address</label>
               <input
@@ -359,7 +325,6 @@ function SignupPage({ onSwitchToLogin, onNavigate }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
-  const [googleState, setGoogleState] = useState('default');
   const [submitError, setSubmitError] = useState('');
 
   const today = useMemo(() => getTodayString(), []);
@@ -379,18 +344,6 @@ function SignupPage({ onSwitchToLogin, onNavigate }) {
 
     return () => window.clearTimeout(timeout);
   }, [isTransitioning]);
-
-  useEffect(() => {
-    if (googleState !== 'rolling') {
-      return undefined;
-    }
-
-    const timeout = window.setTimeout(() => {
-      setGoogleState('connected');
-    }, 620);
-
-    return () => window.clearTimeout(timeout);
-  }, [googleState]);
 
   useEffect(() => {
     document.documentElement.classList.add('signup-page-active');
@@ -566,13 +519,6 @@ function SignupPage({ onSwitchToLogin, onNavigate }) {
     },
   ].filter(Boolean);
 
-  const handleGoogleConnect = () => {
-    if (googleState !== 'default') {
-      return;
-    }
-    setGoogleState('rolling');
-  };
-
   return (
     <div className="eco-signup-page">
       <section className="eco-signup-left">
@@ -631,7 +577,6 @@ function SignupPage({ onSwitchToLogin, onNavigate }) {
                           today={today}
                           showPassword={showPassword}
                           showConfirmPassword={showConfirmPassword}
-                          googleState={googleState}
                           onChange={handleChange}
                           onBlur={handleBlur}
                           onTogglePassword={(field) => {
@@ -641,7 +586,6 @@ function SignupPage({ onSwitchToLogin, onNavigate }) {
                             }
                             setShowConfirmPassword((previous) => !previous);
                           }}
-                          onGoogleConnect={handleGoogleConnect}
                         />
                       </div>
                     </div>

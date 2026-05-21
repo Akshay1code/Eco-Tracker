@@ -7,6 +7,7 @@ import {
   MdMenuBook,
   MdTrackChanges,
   MdEco,
+  MdPerson,
 } from 'react-icons/md';
 
 const NAV_ITEMS = [
@@ -15,6 +16,11 @@ const NAV_ITEMS = [
   { key: 'community', label: 'Community', Icon: MdPeople },
   { key: 'journal', label: 'Journal', Icon: MdMenuBook },
   { key: 'goals', label: 'Goals', Icon: MdTrackChanges },
+];
+
+const MOBILE_NAV_ITEMS = [
+  ...NAV_ITEMS,
+  { key: 'profile', label: 'Profile', Icon: MdPerson },
 ];
 
 function Sidebar({
@@ -245,6 +251,49 @@ function Sidebar({
       height: 18,
       color: '#a6d3ab',
     },
+    mobileDock: {
+      position: 'fixed',
+      left: 12,
+      right: 12,
+      bottom: 12,
+      zIndex: 70,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 6,
+      padding: '10px 8px calc(10px + env(safe-area-inset-bottom, 0px))',
+      borderRadius: 22,
+      background: 'linear-gradient(180deg, rgba(13,49,31,0.96), rgba(11,39,26,0.98))',
+      border: '1px solid rgba(167, 243, 208, 0.12)',
+      boxShadow: '0 18px 34px rgba(7, 30, 19, 0.32)',
+      backdropFilter: 'blur(16px)',
+      WebkitBackdropFilter: 'blur(16px)',
+    },
+    mobileDockItem: {
+      flex: '1 1 0',
+      minWidth: 0,
+      border: 'none',
+      background: 'transparent',
+      color: '#d7f4dd',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+      padding: '8px 4px',
+      borderRadius: 16,
+      cursor: 'pointer',
+      transition: 'background 0.2s ease, transform 0.2s ease',
+    },
+    mobileDockLabel: {
+      fontSize: 10,
+      fontWeight: 600,
+      lineHeight: 1.1,
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      maxWidth: '100%',
+    },
   };
 
   return (
@@ -253,143 +302,175 @@ function Sidebar({
         .eco-sidebar-nav::-webkit-scrollbar { display: none; }
       `}</style>
       <div style={styles.shell}>
-        <button
-          type="button"
-          style={styles.hamburger}
-          aria-label="Open navigation menu"
-          onClick={openSidebar}
-          onMouseEnter={(event) => {
-            event.currentTarget.style.transform = 'scale(1.06)';
-          }}
-          onMouseLeave={(event) => {
-            event.currentTarget.style.transform = 'scale(1)';
-          }}
-        >
-          <RxHamburgerMenu size={22} color="#69f07a" />
-        </button>
-
-        <div style={styles.overlay} onClick={closeSidebar} aria-hidden="true" />
-
-        <aside ref={sidebarRef} style={styles.sidebar}>
-          <div style={styles.brandWrap}>
-            <div style={styles.brand}>EcoJourney</div>
-            <div style={styles.divider} />
-          </div>
-
-          <div
-            style={styles.profileCard}
-            role="button"
-            tabIndex={0}
-            onClick={() => {
-              if (onNavigate) {
-                onNavigate({ key: 'profile', label: 'Profile' });
-              }
-              if (isMobile) {
-                closeSidebar();
-              }
-            }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                if (onNavigate) {
-                  onNavigate({ key: 'profile', label: 'Profile' });
-                }
-                if (isMobile) {
-                  closeSidebar();
-                }
-              }
-            }}
-            onMouseEnter={(event) => {
-              event.currentTarget.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.06))';
-              event.currentTarget.style.borderColor = 'rgba(167,214,167,0.18)';
-              event.currentTarget.style.transform = 'translateY(-1px)';
-            }}
-            onMouseLeave={(event) => {
-              event.currentTarget.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.04))';
-              event.currentTarget.style.borderColor = 'rgba(167,214,167,0.11)';
-              event.currentTarget.style.transform = 'translateY(0)';
-            }}
-          >
-            <div style={styles.avatar}>{userInitials}</div>
-            <div>
-              <div style={styles.profileName}>{userName}</div>
-              <div style={styles.profileSub}>Carbon Tracker RPG</div>
-            </div>
-          </div>
-
-          <nav className="eco-sidebar-nav" style={styles.navScroll}>
-            {NAV_ITEMS.map((item) => {
+        {isMobile ? (
+          <nav style={styles.mobileDock} aria-label="Primary navigation">
+            {MOBILE_NAV_ITEMS.map((item) => {
               const isActive = currentActiveItem === item.label;
               const Icon = item.Icon;
+
               return (
-                <div
+                <button
                   key={item.key}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => handleNavigate(item)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      handleNavigate(item);
-                    }
-                  }}
-                  onMouseEnter={(event) => {
-                    if (!isActive) {
-                      event.currentTarget.style.background = 'rgba(138, 201, 155, 0.09)';
-                      event.currentTarget.style.color = '#eef8f0';
-                    }
-                  }}
-                  onMouseLeave={(event) => {
-                    if (!isActive) {
-                      event.currentTarget.style.background = 'transparent';
-                      event.currentTarget.style.color = '#e8f5e9';
-                    }
-                  }}
+                  type="button"
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 14,
-                    padding: '12px 16px',
-                    borderRadius: 12,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    background: isActive ? 'linear-gradient(135deg, #285f3a, #327247)' : 'transparent',
-                    color: isActive ? '#ffffff' : '#e8f5e9',
-                    fontSize: 14,
-                    fontWeight: isActive ? 700 : 500,
-                    borderLeft: isActive ? '3px solid #7ae58b' : '3px solid transparent',
-                    boxShadow: isActive ? '0 10px 24px rgba(16, 53, 32, 0.28), inset 0 1px 0 rgba(255,255,255,0.06)' : 'none',
-                    minHeight: 48,
+                    ...styles.mobileDockItem,
+                    background: isActive ? 'linear-gradient(135deg, rgba(40,95,58,0.95), rgba(50,114,71,0.95))' : 'transparent',
+                    color: isActive ? '#ffffff' : '#d7f4dd',
+                    boxShadow: isActive ? 'inset 0 1px 0 rgba(255,255,255,0.08), 0 10px 18px rgba(16,53,32,0.26)' : 'none',
                   }}
+                  onClick={() => handleNavigate(item)}
                 >
                   <Icon
                     size={20}
                     color={isActive ? '#8ef39d' : '#8ebf92'}
-                    style={{ filter: isActive ? 'drop-shadow(0 0 6px rgba(122,229,139,0.28))' : 'none', flexShrink: 0 }}
+                    style={{ flexShrink: 0 }}
                   />
-                  <span style={{ color: isActive ? '#ffffff' : '#e8f5e9' }}>{item.label}</span>
-                </div>
+                  <span style={styles.mobileDockLabel}>{item.label}</span>
+                </button>
               );
             })}
-            <div style={styles.spacer} />
           </nav>
+        ) : (
+          <>
+            <button
+              type="button"
+              style={styles.hamburger}
+              aria-label="Open navigation menu"
+              onClick={openSidebar}
+              onMouseEnter={(event) => {
+                event.currentTarget.style.transform = 'scale(1.06)';
+              }}
+              onMouseLeave={(event) => {
+                event.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              <RxHamburgerMenu size={22} color="#69f07a" />
+            </button>
 
-          <div
-            style={styles.footprintCard}
-            onMouseEnter={(event) => {
-              event.currentTarget.style.borderColor = 'rgba(167,214,167,0.2)';
-              event.currentTarget.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.05))';
-            }}
-            onMouseLeave={(event) => {
-              event.currentTarget.style.borderColor = 'rgba(167,214,167,0.11)';
-              event.currentTarget.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.045))';
-            }}
-          >
-            <MdEco style={styles.ecoIcon} />
-            <div style={styles.footprintLabel}>Daily Footprint</div>
-            <div style={styles.footprintValue}>{formattedFootprint}</div>
-          </div>
-        </aside>
+            <div style={styles.overlay} onClick={closeSidebar} aria-hidden="true" />
+
+            <aside ref={sidebarRef} style={styles.sidebar}>
+              <div style={styles.brandWrap}>
+                <div style={styles.brand}>EcoJourney</div>
+                <div style={styles.divider} />
+              </div>
+
+              <div
+                style={styles.profileCard}
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  if (onNavigate) {
+                    onNavigate({ key: 'profile', label: 'Profile' });
+                  }
+                  if (isMobile) {
+                    closeSidebar();
+                  }
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    if (onNavigate) {
+                      onNavigate({ key: 'profile', label: 'Profile' });
+                    }
+                    if (isMobile) {
+                      closeSidebar();
+                    }
+                  }
+                }}
+                onMouseEnter={(event) => {
+                  event.currentTarget.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.06))';
+                  event.currentTarget.style.borderColor = 'rgba(167,214,167,0.18)';
+                  event.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(event) => {
+                  event.currentTarget.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.04))';
+                  event.currentTarget.style.borderColor = 'rgba(167,214,167,0.11)';
+                  event.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                <div style={styles.avatar}>{userInitials}</div>
+                <div>
+                  <div style={styles.profileName}>{userName}</div>
+                  <div style={styles.profileSub}>Carbon Tracker RPG</div>
+                </div>
+              </div>
+
+              <nav className="eco-sidebar-nav" style={styles.navScroll}>
+                {NAV_ITEMS.map((item) => {
+                  const isActive = currentActiveItem === item.label;
+                  const Icon = item.Icon;
+                  return (
+                    <div
+                      key={item.key}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => handleNavigate(item)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          handleNavigate(item);
+                        }
+                      }}
+                      onMouseEnter={(event) => {
+                        if (!isActive) {
+                          event.currentTarget.style.background = 'rgba(138, 201, 155, 0.09)';
+                          event.currentTarget.style.color = '#eef8f0';
+                        }
+                      }}
+                      onMouseLeave={(event) => {
+                        if (!isActive) {
+                          event.currentTarget.style.background = 'transparent';
+                          event.currentTarget.style.color = '#e8f5e9';
+                        }
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 14,
+                        padding: '12px 16px',
+                        borderRadius: 12,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        background: isActive ? 'linear-gradient(135deg, #285f3a, #327247)' : 'transparent',
+                        color: isActive ? '#ffffff' : '#e8f5e9',
+                        fontSize: 14,
+                        fontWeight: isActive ? 700 : 500,
+                        borderLeft: isActive ? '3px solid #7ae58b' : '3px solid transparent',
+                        boxShadow: isActive ? '0 10px 24px rgba(16, 53, 32, 0.28), inset 0 1px 0 rgba(255,255,255,0.06)' : 'none',
+                        minHeight: 48,
+                      }}
+                    >
+                      <Icon
+                        size={20}
+                        color={isActive ? '#8ef39d' : '#8ebf92'}
+                        style={{ filter: isActive ? 'drop-shadow(0 0 6px rgba(122,229,139,0.28))' : 'none', flexShrink: 0 }}
+                      />
+                      <span style={{ color: isActive ? '#ffffff' : '#e8f5e9' }}>{item.label}</span>
+                    </div>
+                  );
+                })}
+                <div style={styles.spacer} />
+              </nav>
+
+              <div
+                style={styles.footprintCard}
+                onMouseEnter={(event) => {
+                  event.currentTarget.style.borderColor = 'rgba(167,214,167,0.2)';
+                  event.currentTarget.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.05))';
+                }}
+                onMouseLeave={(event) => {
+                  event.currentTarget.style.borderColor = 'rgba(167,214,167,0.11)';
+                  event.currentTarget.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.045))';
+                }}
+              >
+                <MdEco style={styles.ecoIcon} />
+                <div style={styles.footprintLabel}>Daily Footprint</div>
+                <div style={styles.footprintValue}>{formattedFootprint}</div>
+              </div>
+            </aside>
+          </>
+        )}
       </div>
     </>
   );

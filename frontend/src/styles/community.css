@@ -460,3 +460,95 @@
   border-radius: 9999px;
   border: 1px solid rgba(105, 240, 122, 0.2);
 }
+
+@media (max-width: 768px) {
+  .community-page {
+    padding: 1rem 0.875rem;
+    gap: 1.25rem;
+  }
+
+  .community-title {
+    font-size: 1.75rem;
+  }
+
+  .community-subtitle {
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+  }
+
+  .filter-container {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .pill-button {
+    flex: 1 1 9rem;
+    text-align: center;
+  }
+
+  .rankings-table-container {
+    padding: 1rem;
+  }
+
+  .leader-row--header {
+    display: none;
+  }
+
+  .leader-row {
+    grid-template-columns: 2.75rem minmax(0, 1fr) auto;
+    grid-template-areas:
+      "rank user chevron"
+      "rank score score"
+      "rank xp xp";
+    gap: 0.5rem 0.75rem;
+    padding: 1rem 0.75rem;
+    align-items: start;
+  }
+
+  .rank-num {
+    grid-area: rank;
+    align-self: center;
+    font-size: 1rem;
+  }
+
+  .user-info-cell {
+    grid-area: user;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+
+  .user-info-cell > div:last-child {
+    min-width: 0;
+  }
+
+  .list-avatar {
+    width: 3rem;
+    height: 3rem;
+    flex-shrink: 0;
+  }
+
+  .user-name {
+    word-break: break-word;
+    line-height: 1.2;
+  }
+
+  .score-cell,
+  .xp-cell {
+    justify-self: start;
+    font-size: 0.95rem;
+  }
+
+  .score-cell {
+    grid-area: score;
+  }
+
+  .xp-cell {
+    grid-area: xp;
+  }
+
+  .chevron-cell {
+    grid-area: chevron;
+    align-self: center;
+  }
+}

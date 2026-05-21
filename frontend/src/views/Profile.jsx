@@ -86,7 +86,8 @@ function Profile({ activeTab = 'profile', onLogout }) {
       dob: backendUser?.dob || 'Unknown',
       joined: formatJoined(backendUser?.createdAt),
       level: backendUser?.level || 1,
-      xp: backendUser?.score || 0,
+      xp: backendUser?.currentXp ?? backendUser?.score ?? 0,
+      xpRequiredForLevel: backendUser?.xpRequiredForLevel ?? 2500,
     };
   }, [backendUser]);
 
@@ -235,7 +236,7 @@ function Profile({ activeTab = 'profile', onLogout }) {
                 </div>
                 <div className="profile-stat">
                   <span className="profile-stat-value">{mergedProfile.xp}</span>
-                  <span className="profile-stat-label">Total XP</span>
+                  <span className="profile-stat-label">XP This Level</span>
                 </div>
               </div>
             </div>

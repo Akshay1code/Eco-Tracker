@@ -14,7 +14,14 @@ import {
   saveUserJournal,
 } from '../models/userModel.js';
 import { deleteDailyRecordsForUser, listActivityRecordsForLeaderboard, mutateDailyRecord } from '../models/activityModel.js';
-import { WELCOME_XP } from '../constants.js';
+import {
+  INDIA_GRID_EMISSION_FACTOR,
+  WELCOME_XP,
+  calculateTransportCarbonKg,
+  getTransportEmissionProfile,
+  resolveTransportModeKey,
+} from '../constants.js';
+import { buildProgressionSnapshot } from '../services/progression.js';
 import { getDailyQuests, completeQuest, updateCarbonFootprint } from '../services/questService.js';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -192,6 +199,7 @@ function summarizeLeaderboardUser(user, records, recentDates) {
     : roundMetric(latestCarbon);
   const activityXp = records.reduce((sum, record) => sum + Number(record.xp_earned || 0), 0);
   const xp = Math.max(Number(user.score || 0), WELCOME_XP + activityXp);
+  const progression = buildProgressionSnapshot(xp);
   const trend = weekly.length >= 2 && weekly[weekly.length - 1] <= weekly[0] ? 'up' : 'down';
 
   return {
@@ -200,7 +208,11 @@ function summarizeLeaderboardUser(user, records, recentDates) {
     score: averageCarbon,
     latestCarbon: roundMetric(latestCarbon),
     xp,
-    level: typeof user.level === 'number' ? user.level : 1,
+    totalXp: progression.totalXp,
+    currentXp: progression.currentXp,
+    xpRequiredForLevel: progression.xpRequiredForLevel,
+    xpToNextLevel: progression.xpToNextLevel,
+    level: progression.level,
     badges: Array.isArray(user.badges) ? user.badges : [],
     badge: inferBadge(user.rank, xp),
     bio: buildUserBio(user),
@@ -523,15 +535,30 @@ export async function submitTransportCarbon(searchParams, payload) {
   const userId = normalizeUserId(getParam(searchParams, 'userId'));
   if (!userId) return { status: 400, payload: { error: 'userId is required.' } };
 
-  const { deltaKgCO2 } = payload;
-  if (typeof deltaKgCO2 !== 'number') return { status: 400, payload: { error: 'deltaKgCO2 is required.' } };
+  const requestedMode = payload?.transportType || payload?.type || payload?.mode;
+  const transportMode = resolveTransportModeKey(requestedMode);
+  const distanceKm = Number(payload?.distanceKm ?? payload?.distance_km);
+  const hasDistance = Number.isFinite(distanceKm) && distanceKm >= 0;
+  const fallbackDeltaKgCO2 = Number(payload?.deltaKgCO2);
+  const hasFallbackDelta = Number.isFinite(fallbackDeltaKgCO2) && fallbackDeltaKgCO2 >= 0;
+
+  if (!hasDistance && !hasFallbackDelta) {
+    return {
+      status: 400,
+      payload: { error: 'Provide either distanceKm with a transportType or a numeric deltaKgCO2.' },
+    };
+  }
+
+  const profile = getTransportEmissionProfile(transportMode);
+  const deltaKgCO2 = hasDistance ? calculateTransportCarbonKg(distanceKm, transportMode) : fallbackDeltaKgCO2;
+  const timestamp = new Date().toISOString();
 
   try {
     const data = await updateCarbonFootprint(userId, deltaKgCO2);
     // Sync to daily activity record
-    await mutateDailyRecord(userId, new Date().toISOString(), (dailyRecord) => {
+    await mutateDailyRecord(userId, timestamp, (dailyRecord) => {
       dailyRecord.transport_carbon_emission = Number((dailyRecord.transport_carbon_emission + deltaKgCO2).toFixed(6));
-      
+
       const deviceCarbon = Number(dailyRecord.device_carbon_emission || 0);
       const chargingCarbon = Number(dailyRecord.charging_carbon_emission || 0);
       const transportCarbon = Number(dailyRecord.transport_carbon_emission || 0);
@@ -543,11 +570,41 @@ export async function submitTransportCarbon(searchParams, payload) {
       dailyRecord.gross_carbon_impact = gross;
       dailyRecord.net_carbon_impact = net;
       dailyRecord.carbon_emission = net;
-      
+      dailyRecord.updated_at = timestamp;
+      dailyRecord.activity_logs = Array.isArray(dailyRecord.activity_logs) ? dailyRecord.activity_logs : [];
+      dailyRecord.activity_logs.push({
+        timestamp,
+        activity: transportMode,
+        source: 'manual_transport_entry',
+        carbon_delta_kg: deltaKgCO2,
+        carbon_direction: 'emitted',
+        net_impact_delta_kg: deltaKgCO2,
+        distance_moved: hasDistance ? Number(distanceKm.toFixed(3)) * 1000 : 0,
+        cadence_spm: 0,
+        confidence: 1,
+      });
+
+      if (dailyRecord.activity_logs.length > 50) {
+        dailyRecord.activity_logs.splice(0, dailyRecord.activity_logs.length - 50);
+      }
+
       return { updated: true };
     });
 
-    return { status: 200, payload: { success: true, data } };
+    return {
+      status: 200,
+      payload: {
+        success: true,
+        data: {
+          ...data,
+          transportMode,
+          transportLabel: profile.label,
+          emissionFactorKgPerKm: profile.factorKgCO2e,
+          distanceKm: hasDistance ? Number(distanceKm.toFixed(3)) : null,
+          carbonKg: deltaKgCO2,
+        },
+      },
+    };
   } catch (error) {
     return { status: 400, payload: { error: error.message } };
   }
@@ -567,8 +624,7 @@ export async function submitElectricityBill(searchParams, payload) {
     kwh = billAmount / 8.50; // Fallback MSEDCL 2024 rate
   }
 
-  // Monthly kgCO2 = units_kWh * 0.725
-  const monthlyKgCO2 = kwh * 0.725;
+  const monthlyKgCO2 = kwh * INDIA_GRID_EMISSION_FACTOR;
   const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
   const dailyKgCO2Contribution = monthlyKgCO2 / daysInMonth;
 

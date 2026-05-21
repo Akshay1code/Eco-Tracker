@@ -59,7 +59,9 @@ function EcoTodos({ userProgress }) {
       </div>
 
       <div className="todo-progress">
-        <div className="todo-xp-text">{userProgress?.score || 0} XP collected</div>
+        <div className="todo-xp-text">
+          {userProgress?.currentXp ?? userProgress?.score ?? 0} / {userProgress?.xpRequiredForLevel ?? 2500} XP this level
+        </div>
         <ProgressBar value={userProgress?.levelProgressPct || 0} color="linear-gradient(90deg, #22c55e, #6ee7b7)" height={8} />
       </div>
 

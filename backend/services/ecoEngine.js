@@ -10,9 +10,7 @@ import {
   INDIA_GRID_EMISSION_FACTOR,
   MOVEMENT_THRESHOLD_METERS,
   TIME_TRIGGER_MINUTES,
-  VEHICLE_EMISSION_KG_PER_KM,
-  TRAIN_EMISSION_KG_PER_KM,
-  BUS_EMISSION_KG_PER_KM,
+  calculateTransportCarbonKg,
 } from '../constants.js';
 
 function round(value, digits = 6) {
@@ -249,22 +247,25 @@ function calculateTransportImpact(activityType, distanceMeters) {
 
   // Motor vehicle activities — emit carbon
   const isCar = ['driving', 'car', 'vehicle', 'transport'].includes(normalizedActivity);
-  const isBus = ['bus'].includes(normalizedActivity);
+  const isBus = normalizedActivity === 'bus';
   const isTrain = ['train', 'metro', 'subway', 'transit', 'rail', 'railway'].includes(normalizedActivity);
-  const isMotorbike = ['motorbike', 'bike', 'motorcycle', 'scooter', 'two_wheeler'].includes(normalizedActivity);
+  const isMotorbike = ['motorbike', 'motorcycle', 'scooter', 'two_wheeler'].includes(normalizedActivity);
+  const isAutoRickshaw = ['auto', 'autorickshaw', 'auto_rickshaw', 'rickshaw'].includes(normalizedActivity);
 
-  if (isCar || isBus || isTrain || isMotorbike) {
-    let factor = VEHICLE_EMISSION_KG_PER_KM; // default petrol car
+  if (isCar || isBus || isTrain || isMotorbike || isAutoRickshaw) {
+    let transportMode = 'car_petrol';
     if (isTrain) {
-      factor = TRAIN_EMISSION_KG_PER_KM;
+      transportMode = 'metro_train_electric';
     } else if (isBus) {
-      factor = BUS_EMISSION_KG_PER_KM;
+      transportMode = 'bus_diesel_city';
     } else if (isMotorbike) {
-      factor = 0.076; // Two-wheeler average
+      transportMode = 'two_wheeler_petrol';
+    } else if (isAutoRickshaw) {
+      transportMode = 'auto_rickshaw';
     }
 
     return {
-      emittedKg: round(distanceKm * factor),
+      emittedKg: calculateTransportCarbonKg(distanceKm, transportMode),
       savedKg: 0,
       direction: 'emitted',
     };
@@ -272,7 +273,7 @@ function calculateTransportImpact(activityType, distanceMeters) {
 
   // Active / zero-emission travel (walking, running, cycling, idle, unknown)
   // Idle has distance 0 so savedKg will be 0 anyway; explicit handling avoids confusion
-  const isActiveTravel = ['walking', 'running', 'cycling', 'walk', 'run', 'cycle'].includes(normalizedActivity);
+  const isActiveTravel = ['walking', 'running', 'cycling', 'biking', 'walk', 'run', 'cycle', 'bicycle', 'bike'].includes(normalizedActivity);
   if (isActiveTravel) {
     return {
       emittedKg: 0,

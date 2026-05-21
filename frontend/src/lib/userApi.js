@@ -100,12 +100,12 @@ export async function completeDailyQuest(userId, questId) {
   return parseApiResponse(response, 'Unable to complete quest.');
 }
 
-export async function submitTransportCarbon(userId, deltaKgCO2, type = 'car') {
+export async function submitTransportCarbon(userId, transportPayload = {}) {
   const normalizedUserId = typeof userId === 'string' ? userId.trim().toLowerCase() : '';
   const response = await fetch(`${API_BASE_URL}/api/users/carbon/transport?userId=${encodeURIComponent(normalizedUserId)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ deltaKgCO2, type }),
+    body: JSON.stringify(transportPayload),
   });
   return parseApiResponse(response, 'Unable to submit transport carbon.');
 }

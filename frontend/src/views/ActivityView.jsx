@@ -42,7 +42,7 @@ import useDeviceCarbonTracker from '../hooks/useDeviceCarbonTracker.ts';
 import '../styles/activity.css';
 import '../styles/googleFit.css';
 
-const KG_PER_KM_CAR = 0.192;
+const KG_PER_KM_CAR = 0.14;
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {

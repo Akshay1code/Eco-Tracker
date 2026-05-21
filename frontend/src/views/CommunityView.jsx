@@ -15,10 +15,17 @@ export default function CommunityView({ onUserClick, onLogout, activeTab = 'comm
 
     let sorted = [];
     if (filter === 'All Time') {
-      sorted = [...leaderboardUsers].sort((a, b) => b.xp - a.xp);
+      sorted = [...leaderboardUsers].sort(
+        (a, b) => (b.level || 0) - (a.level || 0) || (b.totalXp || b.xp || 0) - (a.totalXp || a.xp || 0)
+      );
     } else {
-      // For Week/Month, lower score (carbon emission) is better, but higher XP wins ties
-      sorted = [...leaderboardUsers].sort((a, b) => (a.score || 0) - (b.score || 0) || (b.xp || 0) - (a.xp || 0));
+      // For Week/Month, lower score (carbon emission) is better, then higher level wins ties.
+      sorted = [...leaderboardUsers].sort(
+        (a, b) =>
+          (a.score || 0) - (b.score || 0) ||
+          (b.level || 0) - (a.level || 0) ||
+          (b.totalXp || b.xp || 0) - (a.totalXp || a.xp || 0)
+      );
     }
     
     return sorted.map((u, i) => ({ ...u, dynamicRank: i + 1 }));
@@ -82,8 +89,8 @@ export default function CommunityView({ onUserClick, onLogout, activeTab = 'comm
                     <span className="metric-value">{podium[1].score?.toFixed(2)} kg</span>
                   </div>
                   <div className="metric-row">
-                    <span className="metric-label">XP</span>
-                    <span className="metric-value">{podium[1].xp}</span>
+                    <span className="metric-label">Level</span>
+                    <span className="metric-value">{podium[1].level ?? 1}</span>
                   </div>
                 </div>
               </div>
@@ -105,8 +112,8 @@ export default function CommunityView({ onUserClick, onLogout, activeTab = 'comm
                     <span className="metric-value">{podium[0].score?.toFixed(2)} kg</span>
                   </div>
                   <div className="metric-row">
-                    <span className="metric-label">XP</span>
-                    <span className="metric-value" style={{ color: 'var(--xp-gold)' }}>{podium[0].xp}</span>
+                    <span className="metric-label">Level</span>
+                    <span className="metric-value" style={{ color: 'var(--xp-gold)' }}>{podium[0].level ?? 1}</span>
                   </div>
                 </div>
               </div>
@@ -127,8 +134,8 @@ export default function CommunityView({ onUserClick, onLogout, activeTab = 'comm
                     <span className="metric-value">{podium[2].score?.toFixed(2)} kg</span>
                   </div>
                   <div className="metric-row">
-                    <span className="metric-label">XP</span>
-                    <span className="metric-value">{podium[2].xp}</span>
+                    <span className="metric-label">Level</span>
+                    <span className="metric-value">{podium[2].level ?? 1}</span>
                   </div>
                 </div>
               </div>
@@ -136,11 +143,11 @@ export default function CommunityView({ onUserClick, onLogout, activeTab = 'comm
           </section>
 
           <section className="rankings-table-container">
-            <div className="leader-row" style={{ borderBottom: '2px solid var(--eco-bg)', marginBottom: '0.5rem', opacity: 0.7 }}>
+            <div className="leader-row leader-row--header" style={{ borderBottom: '2px solid var(--eco-bg)', marginBottom: '0.5rem', opacity: 0.7 }}>
               <div className="rank-num" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Rank</div>
               <div className="user-name" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Participant</div>
               <div className="user-name" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Sustainability Score</div>
-              <div className="user-name" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Eco Experience</div>
+              <div className="user-name" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Level</div>
               <div></div>
             </div>
             
@@ -161,7 +168,7 @@ export default function CommunityView({ onUserClick, onLogout, activeTab = 'comm
                   </div>
                   <div className="xp-cell">
                     <MdBolt style={{ marginRight: '2px' }} />
-                    {user.xp} XP
+                    Level {user.level ?? 1}
                   </div>
                   <div className="chevron-cell">
                     <MdChevronRight fontSize="1.25rem" />
